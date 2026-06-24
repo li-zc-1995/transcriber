@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 import shutil
 import subprocess
 import sys
@@ -17,6 +18,19 @@ from src.core import (
     render_markdown,
     safe_stem,
 )
+
+
+SUPPORTED_COOKIE_BROWSERS = {
+    "brave",
+    "chrome",
+    "chromium",
+    "edge",
+    "firefox",
+    "opera",
+    "safari",
+    "vivaldi",
+    "whale",
+}
 
 
 def app_dir() -> Path:
@@ -78,6 +92,26 @@ def read_urls_interactively() -> list[str]:
     return extract_urls("\n".join(lines))
 
 
+def parse_cookies_from_browser(value: str | None) -> tuple[str, str | None, str | None, str | None] | None:
+    if not value:
+        return None
+
+    match = re.fullmatch(
+        r"(?P<name>[^+:]+)(?:\s*\+\s*(?P<keyring>[^:]+))?(?:\s*:\s*(?!:)(?P<profile>.+?))?(?:\s*::\s*(?P<container>.+))?",
+        value,
+    )
+    if not match:
+        raise ValueError(f"无效的浏览器 cookies 参数：{value}")
+
+    browser_name, keyring, profile, container = match.group("name", "keyring", "profile", "container")
+    browser_name = browser_name.lower()
+    if browser_name not in SUPPORTED_COOKIE_BROWSERS:
+        supported = "、".join(sorted(SUPPORTED_COOKIE_BROWSERS))
+        raise ValueError(f"不支持的浏览器：{browser_name}。支持：{supported}")
+
+    return browser_name, profile, keyring.upper() if keyring else None, container
+
+
 def pause_if_interactive() -> None:
     if sys.stdin.isatty():
         try:
@@ -86,17 +120,24 @@ def pause_if_interactive() -> None:
             pass
 
 
-def download_video(url: str, output_dir: Path, index: int) -> tuple[Path, dict[str, Any]]:
+def download_video(
+    url: str,
+    output_dir: Path,
+    index: int,
+    cookies_from_browser: tuple[str, str | None, str | None, str | None] | None = None,
+) -> tuple[Path, dict[str, Any]]:
     output_dir.mkdir(parents=True, exist_ok=True)
     template = str(output_dir / f"{index:02d}_%(id)s.%(ext)s")
     options = {
-        "format": "best",
+        "format": "bv*+ba/b",
         "outtmpl": template,
         "noplaylist": True,
         "windowsfilenames": True,
         "quiet": False,
         "no_warnings": False,
     }
+    if cookies_from_browser:
+        options["cookiesfrombrowser"] = cookies_from_browser
     with YoutubeDL(options) as ydl:
         info = ydl.extract_info(url, download=True)
         video_path = Path(ydl.prepare_filename(info))
@@ -172,9 +213,10 @@ def process_url(
     model: str,
     ffmpeg: str,
     keep_wav: bool,
+    cookies_from_browser: tuple[str, str | None, str | None, str | None] | None,
 ) -> Path:
     print(f"\n[{index}] 开始处理：{url}")
-    video_path, info = download_video(url, output_dir, index)
+    video_path, info = download_video(url, output_dir, index, cookies_from_browser)
     title = info.get("title") or info.get("fulltitle") or info.get("id") or f"video_{index}"
     stem = f"{index:02d}_{safe_stem(title)[:80]}"
 
@@ -188,7 +230,7 @@ def process_url(
     md_path = output_dir / f"{stem}.校对稿.md"
     info_path = output_dir / f"{stem}.info.json"
 
-    info_path.write_text(json.dumps(info, ensure_ascii=False, indent=2), encoding="utf-8")
+    info_path.write_text(json.dumps(info, ensure_ascii=False, indent=2, default=str), encoding="utf-8")
     extract_audio(ffmpeg, video_path, wav_path)
 
     if backend == "ffmpeg-whisper":
@@ -239,6 +281,11 @@ def build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument("--ffmpeg", default=None, help="ffmpeg.exe 路径。")
     parser.add_argument("--keep-wav", action="store_true", help="保留中间 wav 音频文件。")
+    parser.add_argument(
+        "--cookies-from-browser",
+        default=None,
+        help="从浏览器读取 cookies，例如 chrome 或 edge。用于处理 B 站 412/登录态限制。",
+    )
     return parser
 
 
@@ -261,6 +308,13 @@ def main(argv: list[str] | None = None) -> int:
             return 1
 
     try:
+        cookies_from_browser = parse_cookies_from_browser(args.cookies_from_browser)
+    except ValueError as exc:
+        print(exc)
+        pause_if_interactive()
+        return 1
+
+    try:
         ffmpeg = find_ffmpeg(args.ffmpeg)
     except FileNotFoundError as exc:
         print(exc)
@@ -281,6 +335,7 @@ def main(argv: list[str] | None = None) -> int:
                 model=args.model,
                 ffmpeg=ffmpeg,
                 keep_wav=args.keep_wav,
+                cookies_from_browser=cookies_from_browser,
             )
         except Exception as exc:
             failures.append((url, str(exc)))

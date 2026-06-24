@@ -19,6 +19,12 @@ pip install -r requirements.txt
 python -m src.cli "https://b23.tv/MJoM0cX"
 ```
 
+如果 B 站返回 `HTTP Error 412: Precondition Failed`，可以读取已登录浏览器的 cookies：
+
+```powershell
+python -m src.cli "https://b23.tv/MJoM0cX" --cookies-from-browser chrome
+```
+
 不传链接时会进入粘贴输入模式：
 
 ```powershell
@@ -70,4 +76,9 @@ pyinstaller transcriber.spec
 
 ## 常见问题
 
-B 站可能对播放元数据接口做风控。如果遇到 `HTTP Error 412: Precondition Failed`，优先尝试升级 `yt-dlp`、更换网络环境，或使用已登录浏览器导出的 B 站 cookies 后再扩展下载配置。
+B 站可能对播放元数据接口做风控。如果遇到 `HTTP Error 412: Precondition Failed`，优先尝试：
+
+1. 确认浏览器中能正常播放该视频。
+2. 使用 `--cookies-from-browser chrome` 读取 Chrome cookies。
+3. 如果使用 Edge，可以改成 `--cookies-from-browser edge`。
+4. 仍失败时，升级 `yt-dlp` 或更换网络环境。
