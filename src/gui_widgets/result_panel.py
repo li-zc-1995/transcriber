@@ -35,12 +35,12 @@ class ResultPanel(QWidget):
         self.clean_text = QTextEdit()
         self.raw_text = QTextEdit()
         self.log_text = QTextEdit()
-        self.files_table = QTableWidget(0, 4)
+        self.files_table = QTableWidget(0, 5)
 
         for edit in (self.clean_text, self.raw_text, self.log_text):
             edit.setReadOnly(True)
 
-        self.files_table.setHorizontalHeaderLabels(["类型", "路径", "打开", "定位"])
+        self.files_table.setHorizontalHeaderLabels(["类型", "路径", "打开", "定位", "复制路径"])
         self.files_table.horizontalHeader().setStretchLastSection(True)
         self.files_table.verticalHeader().setVisible(False)
 
@@ -94,6 +94,7 @@ class ResultPanel(QWidget):
             self.files_table.setItem(row, 1, item)
             self.files_table.setCellWidget(row, 2, self._file_buttons(path, locate=False))
             self.files_table.setCellWidget(row, 3, self._file_buttons(path, locate=True))
+            self.files_table.setCellWidget(row, 4, self._copy_path_button(path))
 
     def _file_buttons(self, path: Path, locate: bool) -> QWidget:
         container = QWidget()
@@ -102,5 +103,15 @@ class ResultPanel(QWidget):
         button = QPushButton("定位" if locate else "打开")
         button.setEnabled(path.exists())
         button.clicked.connect(lambda: locate_path(path) if locate else open_path(path))
+        layout.addWidget(button)
+        return container
+
+    def _copy_path_button(self, path: Path) -> QWidget:
+        container = QWidget()
+        layout = QHBoxLayout(container)
+        layout.setContentsMargins(0, 0, 0, 0)
+        button = QPushButton("复制")
+        button.setEnabled(path.exists())
+        button.clicked.connect(lambda: QApplication.clipboard().setText(str(path)))
         layout.addWidget(button)
         return container
