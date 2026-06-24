@@ -1,0 +1,65 @@
+import os
+from pathlib import Path
+
+os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
+
+from PySide6.QtWidgets import QApplication
+
+from src.config import AppSettings
+from src.gui_widgets.main_window import MainWindow
+from src.gui_widgets.platform_input import detect_platform
+
+
+def app() -> QApplication:
+    return QApplication.instance() or QApplication([])
+
+
+def test_detect_platform_handles_supported_link_types() -> None:
+    assert detect_platform("https://b23.tv/MJoM0cX") == "bilibili"
+    assert detect_platform("https://www.bilibili.com/video/BV1xx411c7mD") == "bilibili"
+    assert detect_platform("https://v.douyin.com/v6A7Jb4Nsmw/") == "douyin"
+
+
+def test_main_window_exposes_platform_tabs_and_output_controls(tmp_path: Path) -> None:
+    app()
+    settings = AppSettings(output_dir=str(tmp_path), bilibili_cookies_browser="chrome")
+
+    window = MainWindow(settings=settings)
+
+    assert window.windowTitle() == "Transcriber"
+    assert window.font().family() == "Microsoft YaHei UI"
+    assert [window.platform_tabs.tabText(i) for i in range(window.platform_tabs.count())] == ["抖音", "Bilibili"]
+    assert window.output_dir_edit.text() == str(tmp_path)
+    assert window.bilibili_input.cookies_combo.currentText() == "Chrome"
+    assert window.douyin_input.cookies_combo is None
+
+
+def test_task_list_adds_unique_urls(tmp_path: Path) -> None:
+    app()
+    window = MainWindow(settings=AppSettings(output_dir=str(tmp_path)))
+
+    window.add_tasks("bilibili", ["https://b23.tv/MJoM0cX", "https://b23.tv/MJoM0cX"], None)
+
+    assert window.task_list.rowCount() == 1
+    assert window.task_list.item(0, 0).text() == "Bilibili"
+    assert window.task_list.item(0, 2).text() == "等待中"
+
+
+def test_runtime_bilibili_request_uses_current_cookie_selection(tmp_path: Path) -> None:
+    app()
+    window = MainWindow(settings=AppSettings(output_dir=str(tmp_path)))
+    window.add_tasks("bilibili", ["https://b23.tv/MJoM0cX"], None)
+    window.bilibili_input.cookies_combo.setCurrentText("Chrome")
+    request = next(iter(window._requests_by_job_id.values()))
+
+    runtime_request = window._with_runtime_settings(request, "ffmpeg")
+
+    assert runtime_request.cookies_from_browser == ("chrome", None, None, None)
+
+
+def test_main_window_exposes_cancel_button(tmp_path: Path) -> None:
+    app()
+    window = MainWindow(settings=AppSettings(output_dir=str(tmp_path)))
+
+    assert window.cancel_button.text() == "取消当前任务"
+    assert not window.cancel_button.isEnabled()

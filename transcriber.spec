@@ -16,10 +16,12 @@ tmp_ret = collect_all('tiktoken')
 datas += tmp_ret[0]; binaries += tmp_ret[1]; hiddenimports += tmp_ret[2]
 tmp_ret = collect_all('torch')
 datas += tmp_ret[0]; binaries += tmp_ret[1]; hiddenimports += tmp_ret[2]
+tmp_ret = collect_all('PySide6')
+datas += tmp_ret[0]; binaries += tmp_ret[1]; hiddenimports += tmp_ret[2]
 
 
 a = Analysis(
-    [str(ROOT / 'src' / 'cli.py')],
+    [str(ROOT / 'src' / 'gui.py')],
     pathex=[str(ROOT)],
     binaries=binaries,
     datas=datas,
@@ -43,7 +45,7 @@ exe = EXE(
     bootloader_ignore_signals=False,
     strip=False,
     upx=True,
-    console=True,
+    console=False,
     disable_windowed_traceback=False,
     argv_emulation=False,
     target_arch=None,

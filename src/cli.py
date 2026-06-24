@@ -1,23 +1,14 @@
 from __future__ import annotations
 
 import argparse
-import json
 import re
 import shutil
-import subprocess
 import sys
 from pathlib import Path
-from typing import Any
 
-from yt_dlp import YoutubeDL
-
-from src.core import (
-    clean_transcript_text,
-    escape_ffmpeg_filter_value,
-    extract_urls,
-    render_markdown,
-    safe_stem,
-)
+from src.core import extract_urls
+from src.job_events import JobEvent, JobRequest
+from src.transcriber_job import TranscriberJob
 
 
 SUPPORTED_COOKIE_BROWSERS = {
@@ -62,22 +53,6 @@ def find_ffmpeg(explicit: str | None = None) -> str:
     raise FileNotFoundError("找不到 ffmpeg.exe。请把 ffmpeg.exe 放到 exe 同目录，或加入 PATH。")
 
 
-def run_command(command: list[str]) -> None:
-    print("运行：", " ".join(command))
-    subprocess.run(command, check=True)
-
-
-def duration_string(seconds: int | float | None) -> str:
-    if seconds is None:
-        return "未知"
-    total = int(round(seconds))
-    minutes, secs = divmod(total, 60)
-    hours, minutes = divmod(minutes, 60)
-    if hours:
-        return f"{hours:02d}:{minutes:02d}:{secs:02d}"
-    return f"{minutes:02d}:{secs:02d}"
-
-
 def read_urls_interactively() -> list[str]:
     print("请粘贴 B 站或抖音视频链接/分享文本，一行一条；输入空行后开始处理：")
     lines: list[str] = []
@@ -120,88 +95,9 @@ def pause_if_interactive() -> None:
             pass
 
 
-def download_video(
-    url: str,
-    output_dir: Path,
-    index: int,
-    cookies_from_browser: tuple[str, str | None, str | None, str | None] | None = None,
-) -> tuple[Path, dict[str, Any]]:
-    output_dir.mkdir(parents=True, exist_ok=True)
-    template = str(output_dir / f"{index:02d}_%(id)s.%(ext)s")
-    options = {
-        "format": "bv*+ba/b",
-        "outtmpl": template,
-        "noplaylist": True,
-        "windowsfilenames": True,
-        "quiet": False,
-        "no_warnings": False,
-    }
-    if cookies_from_browser:
-        options["cookiesfrombrowser"] = cookies_from_browser
-    with YoutubeDL(options) as ydl:
-        info = ydl.extract_info(url, download=True)
-        video_path = Path(ydl.prepare_filename(info))
-    return video_path, info
-
-
-def extract_audio(ffmpeg: str, video_path: Path, wav_path: Path) -> None:
-    run_command(
-        [
-            ffmpeg,
-            "-hide_banner",
-            "-y",
-            "-i",
-            str(video_path),
-            "-vn",
-            "-ac",
-            "1",
-            "-ar",
-            "16000",
-            "-c:a",
-            "pcm_s16le",
-            str(wav_path),
-        ]
-    )
-
-
-def transcribe_audio_with_ffmpeg_whisper(ffmpeg: str, wav_path: Path, model_path: Path, transcript_path: Path) -> None:
-    model = escape_ffmpeg_filter_value(model_path)
-    destination = escape_ffmpeg_filter_value(transcript_path)
-    filter_arg = f"whisper=model='{model}':language=zh:destination='{destination}':format=text"
-    run_command(
-        [
-            ffmpeg,
-            "-hide_banner",
-            "-y",
-            "-i",
-            str(wav_path),
-            "-af",
-            filter_arg,
-            "-f",
-            "null",
-            "NUL",
-        ]
-    )
-
-
-def transcribe_audio_with_openai_whisper(wav_path: Path, model_name: str, transcript_path: Path) -> str:
-    print(f"加载 Whisper 模型：{model_name}")
-    import whisper
-
-    model = whisper.load_model(model_name)
-    result = model.transcribe(str(wav_path), language="zh", task="transcribe", fp16=False, verbose=False)
-    lines: list[str] = []
-    clean_parts: list[str] = []
-    for segment in result.get("segments", []):
-        text = str(segment.get("text", "")).strip()
-        if not text:
-            continue
-        start = float(segment.get("start", 0.0))
-        end = float(segment.get("end", 0.0))
-        lines.append(f"[{start:.2f}-{end:.2f}] {text}")
-        clean_parts.append(text)
-    transcript_path.write_text("\n".join(lines), encoding="utf-8")
-    return "\n".join(clean_parts)
+def print_job_event(event: JobEvent) -> None:
+    suffix = f" {event.progress:.1f}%" if event.progress is not None else ""
+    print(f"[{event.job_id}] {event.message}{suffix}")
 
 
 def process_url(
@@ -215,53 +111,20 @@ def process_url(
     keep_wav: bool,
     cookies_from_browser: tuple[str, str | None, str | None, str | None] | None,
 ) -> Path:
-    print(f"\n[{index}] 开始处理：{url}")
-    video_path, info = download_video(url, output_dir, index, cookies_from_browser)
-    title = info.get("title") or info.get("fulltitle") or info.get("id") or f"video_{index}"
-    stem = f"{index:02d}_{safe_stem(title)[:80]}"
-
-    target_video = output_dir / f"{stem}{video_path.suffix}"
-    if video_path != target_video and not target_video.exists():
-        video_path.rename(target_video)
-        video_path = target_video
-
-    wav_path = output_dir / f"{stem}.wav"
-    raw_path = output_dir / f"{stem}.raw.txt"
-    md_path = output_dir / f"{stem}.校对稿.md"
-    info_path = output_dir / f"{stem}.info.json"
-
-    info_path.write_text(json.dumps(info, ensure_ascii=False, indent=2, default=str), encoding="utf-8")
-    extract_audio(ffmpeg, video_path, wav_path)
-
-    if backend == "ffmpeg-whisper":
-        model_path = Path(model).expanduser().resolve()
-        transcribe_audio_with_ffmpeg_whisper(ffmpeg, wav_path, model_path, raw_path)
-        raw_text = raw_path.read_text(encoding="utf-8", errors="ignore")
-        clean_text = clean_transcript_text(raw_text)
-    else:
-        clean_source = transcribe_audio_with_openai_whisper(wav_path, model, raw_path)
-        raw_text = raw_path.read_text(encoding="utf-8", errors="ignore")
-        clean_text = clean_transcript_text(clean_source)
-
-    markdown = render_markdown(
-        title=str(title),
-        source_url=url,
-        duration=duration_string(info.get("duration")),
-        clean_text=clean_text,
-        raw_transcript=raw_text,
-        generation_note=(
-            f"yt-dlp 下载视频，ffmpeg 提取音频，openai-whisper {model} 模型转写。"
-            if backend == "openai-whisper"
-            else f"yt-dlp 下载视频，ffmpeg 提取音频，ffmpeg whisper filter 使用 {model} 转写。"
-        ),
+    platform = "bilibili" if any(domain in url.lower() for domain in ("bilibili.com", "b23.tv", "bili2233.cn")) else "douyin"
+    request = JobRequest(
+        url=url,
+        platform=platform,
+        index=index,
+        output_dir=output_dir,
+        backend=backend,
+        model=model,
+        ffmpeg=ffmpeg,
+        keep_wav=keep_wav,
+        cookies_from_browser=cookies_from_browser,
     )
-    md_path.write_text(markdown, encoding="utf-8")
-
-    if not keep_wav:
-        wav_path.unlink(missing_ok=True)
-
-    print(f"[{index}] 完成：{md_path}")
-    return md_path
+    result = TranscriberJob(request, print_job_event).run()
+    return result.markdown_path
 
 
 def build_parser() -> argparse.ArgumentParser:

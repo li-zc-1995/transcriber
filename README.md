@@ -13,9 +13,25 @@
 
 ## 可视化界面规划
 
-项目已按 BMAD Method 完成 GUI V1 规划，目标是把当前 CLI 升级为 PySide6 桌面工作台，包含抖音/Bilibili 双 Tab、任务队列、阶段进度、输出路径管理和一键打开文件管理器。规划文档入口见 [docs/index.md](docs/index.md)。
+项目已按 BMAD Method 完成 GUI V1 规划，并开始落地为 PySide6 桌面工作台，包含抖音/Bilibili 双 Tab、任务队列、阶段进度、输出路径管理和一键打开文件管理器。规划文档入口见 [docs/index.md](docs/index.md)。
 
 ## 使用方式
+
+### 启动图形界面
+
+```powershell
+pip install -r requirements.txt
+python -m src.gui
+```
+
+界面提供：
+
+- `抖音` 和 `Bilibili` 两个输入页。
+- 多行粘贴链接或分享文本。
+- Bilibili 页面可选择 Chrome/Edge Cookies，用于处理 412 或登录态限制。
+- 输出目录选择和一键打开目录。
+- 任务队列、阶段进度、日志、结果文件列表。
+- 完成后可在结果区打开 Markdown、定位文件或复制文案。
 
 ### 运行源码
 
@@ -41,10 +57,10 @@ python -m src.cli
 ### 运行打包后的 exe
 
 ```powershell
-.\transcriber.exe "https://b23.tv/MJoM0cX"
+.\transcriber.exe
 ```
 
-默认输出到 exe 同目录下的 `outputs` 文件夹。默认转写后端是 `openai-whisper small`，会使用本机缓存的 `small.pt` 模型；第一次运行如果没有缓存，会自动下载。
+当前 PyInstaller 配置默认打包 GUI 入口，双击 `transcriber.exe` 会打开桌面窗口。CLI 仍可通过源码方式运行。默认输出到程序目录下的 `outputs` 文件夹。默认转写后端是 `openai-whisper small`，会使用本机缓存的 `small.pt` 模型；第一次运行如果没有缓存，会自动下载。
 
 ## 支持的链接
 
@@ -76,7 +92,7 @@ pip install -r requirements.txt
 pyinstaller transcriber.spec
 ```
 
-打包产物会生成到 `dist/transcriber`。
+打包产物会生成到 `dist/transcriber`，入口为图形界面。
 
 ## 输出文件
 
