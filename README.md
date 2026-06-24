@@ -1,10 +1,11 @@
 # Transcriber
 
-批量下载 B 站视频，并生成本地语音转写校对稿。
+批量下载 B 站/抖音视频，并生成本地语音转写校对稿。
 
 ## 功能
 
-- 支持 `b23.tv`、`bilibili.com/video/BV...`、`m.bilibili.com/video/BV...` 和 `bili2233.cn` 链接。
+- 支持 B 站链接：`b23.tv`、`bilibili.com/video/BV...`、`m.bilibili.com/video/BV...`、`bili2233.cn`。
+- 支持抖音短链和分享链接：`v.douyin.com`、`douyin.com`、`iesdouyin.com`、`amemv.com`。
 - 使用 `yt-dlp` 下载视频。
 - 使用 `ffmpeg` 提取 16 kHz 单声道 WAV 音频。
 - 默认使用 `openai-whisper small` 本地转写中文音频。
@@ -31,7 +32,7 @@ python -m src.cli "https://b23.tv/MJoM0cX" --cookies-from-browser chrome
 python -m src.cli
 ```
 
-粘贴一条或多条 B 站视频链接/分享文本，一行一条，最后输入空行开始处理。
+粘贴一条或多条 B 站/抖音视频链接或分享文本，一行一条，最后输入空行开始处理。
 
 ### 运行打包后的 exe
 
@@ -43,10 +44,19 @@ python -m src.cli
 
 ## 支持的链接
 
+### B 站
+
 - `https://b23.tv/...`
 - `https://www.bilibili.com/video/BV...`
 - `https://m.bilibili.com/video/BV...`
 - `https://bili2233.cn/...`
+
+### 抖音
+
+- `https://v.douyin.com/...`
+- `https://www.douyin.com/video/...`
+- `https://www.iesdouyin.com/...`
+- `https://www.amemv.com/...`
 
 ## 依赖
 

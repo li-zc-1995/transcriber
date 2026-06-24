@@ -79,7 +79,7 @@ def duration_string(seconds: int | float | None) -> str:
 
 
 def read_urls_interactively() -> list[str]:
-    print("请粘贴 B 站视频链接或分享文本，一行一条；输入空行后开始处理：")
+    print("请粘贴 B 站或抖音视频链接/分享文本，一行一条；输入空行后开始处理：")
     lines: list[str] = []
     while True:
         try:
@@ -265,8 +265,8 @@ def process_url(
 
 
 def build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(description="批量下载 B 站视频并生成转写校对稿。")
-    parser.add_argument("links", nargs="*", help="B 站视频链接；不传则进入粘贴输入模式。")
+    parser = argparse.ArgumentParser(description="批量下载 B 站/抖音视频并生成转写校对稿。")
+    parser.add_argument("links", nargs="*", help="B 站或抖音视频链接；不传则进入粘贴输入模式。")
     parser.add_argument("--out", default=str(default_output_dir()), help="输出目录。")
     parser.add_argument(
         "--backend",
@@ -295,7 +295,7 @@ def main(argv: list[str] | None = None) -> int:
 
     urls = extract_urls("\n".join(args.links)) if args.links else read_urls_interactively()
     if not urls:
-        print("没有识别到 B 站视频链接。")
+        print("没有识别到支持的视频链接。")
         pause_if_interactive()
         return 1
 

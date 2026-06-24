@@ -11,11 +11,14 @@ SUPPORTED_URL_DOMAINS = (
     "bilibili.com",
     "b23.tv",
     "bili2233.cn",
+    "douyin.com",
+    "iesdouyin.com",
+    "amemv.com",
 )
 
 
 def extract_urls(text: str) -> list[str]:
-    """Extract unique supported Bilibili URLs from pasted share text."""
+    """Extract unique supported video URLs from pasted share text."""
     urls: list[str] = []
     seen: set[str] = set()
     for match in URL_RE.finditer(text):
