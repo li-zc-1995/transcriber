@@ -128,6 +128,17 @@ def classify_error(exc: Exception) -> UserFacingError:
             message="B 站需要浏览器 Cookies，请使用 Chrome 或 Edge Cookies 重试。",
             detail=detail,
         )
+    if (
+        "unexpected_eof_while_reading" in lowered
+        or "eof occurred in violation of protocol" in lowered
+        or "基础连接已经关闭" in detail
+        or "connection was reset" in lowered
+    ):
+        return UserFacingError(
+            kind="network_ssl_failed",
+            message="B 站网络连接失败，请检查网络、代理/VPN 或稍后重试。",
+            detail=detail,
+        )
     if isinstance(exc, FileNotFoundError) or "ffmpeg" in lowered and "找不到" in detail:
         return UserFacingError(kind="ffmpeg_missing", message="未找到 ffmpeg，请选择 ffmpeg.exe。", detail=detail)
     if isinstance(exc, subprocess.CalledProcessError):

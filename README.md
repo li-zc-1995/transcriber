@@ -113,3 +113,5 @@ B 站可能对播放元数据接口做风控。如果遇到 `HTTP Error 412: Pre
 2. 使用 `--cookies-from-browser chrome` 读取 Chrome cookies。
 3. 如果使用 Edge，可以改成 `--cookies-from-browser edge`。
 4. 仍失败时，升级 `yt-dlp` 或更换网络环境。
+
+如果遇到 `[SSL: UNEXPECTED_EOF_WHILE_READING]` 或“基础连接已经关闭”，通常是当前网络到 B 站 HTTPS 连接异常。此时 cookies 一般无效，建议切换网络、代理/VPN 或稍后重试。

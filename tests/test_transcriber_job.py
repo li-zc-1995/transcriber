@@ -62,3 +62,10 @@ def test_classify_error_maps_bilibili_412_to_cookie_action() -> None:
 
     assert error.kind == "bilibili_requires_cookies"
     assert "Cookies" in error.message
+
+
+def test_classify_error_maps_ssl_eof_to_network_issue() -> None:
+    error = classify_error(Exception("[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol"))
+
+    assert error.kind == "network_ssl_failed"
+    assert "网络" in error.message

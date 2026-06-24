@@ -67,3 +67,15 @@ def test_result_panel_exposes_ffmpeg_picker_action() -> None:
     assert panel.failure_action_label.text() == "未找到 ffmpeg"
     assert panel.choose_ffmpeg_button.isEnabled()
     assert actions == ["choose_ffmpeg"]
+
+
+def test_result_panel_network_failure_does_not_enable_wrong_actions() -> None:
+    app()
+    panel = ResultPanel()
+
+    panel.show_failure_actions("network_ssl_failed", "B 站网络连接失败")
+
+    assert panel.failure_action_label.text() == "B 站网络连接失败"
+    assert not panel.retry_chrome_button.isEnabled()
+    assert not panel.retry_edge_button.isEnabled()
+    assert not panel.choose_ffmpeg_button.isEnabled()
