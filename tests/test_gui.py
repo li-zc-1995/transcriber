@@ -63,3 +63,44 @@ def test_main_window_exposes_cancel_button(tmp_path: Path) -> None:
 
     assert window.cancel_button.text() == "取消当前任务"
     assert not window.cancel_button.isEnabled()
+
+
+def test_main_window_maps_412_failure_to_cookie_retry(tmp_path: Path) -> None:
+    app()
+    window = MainWindow(settings=AppSettings(output_dir=str(tmp_path)))
+    calls = []
+    window.retry_failed_job = lambda: calls.append("retry")  # type: ignore[method-assign]
+
+    window.handle_job_failed("bilibili-001", "HTTP Error 412: Precondition Failed")
+    window.result_panel.retry_chrome_button.click()
+
+    assert window.result_panel.retry_chrome_button.isEnabled()
+    assert window.bilibili_input.cookies_combo.currentData() == "chrome"
+    assert calls == ["retry"]
+
+
+def test_main_window_maps_ffmpeg_failure_to_picker_action(tmp_path: Path) -> None:
+    app()
+    window = MainWindow(settings=AppSettings(output_dir=str(tmp_path)))
+    calls = []
+    window.choose_ffmpeg_path = lambda: calls.append("choose")  # type: ignore[method-assign]
+
+    window.handle_job_failed("bilibili-001", "找不到 ffmpeg.exe")
+    window.result_panel.choose_ffmpeg_button.click()
+
+    assert window.result_panel.choose_ffmpeg_button.isEnabled()
+    assert calls == ["choose"]
+
+
+def test_retry_failed_job_only_runs_failed_request(tmp_path: Path) -> None:
+    app()
+    window = MainWindow(settings=AppSettings(output_dir=str(tmp_path)))
+    window.add_tasks("bilibili", ["https://b23.tv/one"], None)
+    window.add_tasks("douyin", ["https://v.douyin.com/two/"], None)
+    captured = []
+    window._run_requests = lambda requests: captured.extend(requests)  # type: ignore[method-assign]
+
+    window.handle_job_failed("bilibili-001", "HTTP Error 412: Precondition Failed")
+    window.retry_failed_job()
+
+    assert [request.job_id for request in captured] == ["bilibili-001"]

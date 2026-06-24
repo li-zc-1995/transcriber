@@ -25,6 +25,7 @@ from src.gui_widgets.result_panel import ResultPanel
 from src.gui_widgets.settings_dialog import SettingsDialog
 from src.gui_widgets.task_list import TaskListWidget
 from src.job_events import JobRequest
+from src.transcriber_job import classify_error
 from src.worker import JobWorker
 
 
@@ -39,6 +40,7 @@ class MainWindow(QMainWindow):
         self._requests_by_job_id: dict[str, JobRequest] = {}
         self._thread: QThread | None = None
         self._worker: JobWorker | None = None
+        self._last_failed_job_id: str | None = None
 
         self.output_dir_edit = QLineEdit(self.settings.output_dir)
         self.output_dir_edit.setReadOnly(True)
@@ -84,6 +86,7 @@ class MainWindow(QMainWindow):
         self.open_output_button.clicked.connect(self.open_output_dir)
         self.cancel_button.clicked.connect(self.cancel_current_job)
         self.settings_button.clicked.connect(self.open_settings)
+        self.result_panel.failure_action_requested.connect(self.handle_failure_action)
 
     def add_tasks(self, platform: str, urls: list[str], cookies_browser: str | None) -> None:
         if not urls:
@@ -126,10 +129,15 @@ class MainWindow(QMainWindow):
             QMessageBox.warning(self, "缺少 ffmpeg", str(exc))
             return
 
-        requests = [
-            self._with_runtime_settings(request, ffmpeg)
-            for request in self._requests_by_job_id.values()
-        ]
+        requests = [self._with_runtime_settings(request, ffmpeg) for request in self._requests_by_job_id.values()]
+        self._run_requests(requests)
+
+    def _run_requests(self, requests: list[JobRequest]) -> None:
+        if not requests:
+            return
+        if self._thread is not None:
+            QMessageBox.information(self, "任务运行中", "当前已有任务在运行。")
+            return
         self._thread = QThread(self)
         self._worker = JobWorker(requests)
         self._worker.moveToThread(self._thread)
@@ -137,6 +145,7 @@ class MainWindow(QMainWindow):
         self._worker.event.connect(self.task_list.update_event)
         self._worker.event.connect(self.result_panel.append_event)
         self._worker.result.connect(self.result_panel.show_result)
+        self._worker.failed.connect(self.handle_job_failed)
         self._worker.finished.connect(self._thread.quit)
         self._worker.finished.connect(self._worker.deleteLater)
         self._thread.finished.connect(self._thread.deleteLater)
@@ -171,10 +180,53 @@ class MainWindow(QMainWindow):
             self.output_dir_edit.setText(self.settings.output_dir)
             save_settings(self.settings)
 
+    def choose_ffmpeg_path(self) -> None:
+        path, _ = QFileDialog.getOpenFileName(self, "选择 ffmpeg.exe", "", "ffmpeg.exe (ffmpeg.exe);;Executables (*.exe)")
+        if not path:
+            return
+        self.settings = AppSettings(
+            output_dir=self.output_dir_edit.text(),
+            ffmpeg_path=path,
+            whisper_model=self.settings.whisper_model,
+            keep_wav=self.settings.keep_wav,
+            bilibili_cookies_browser=self.settings.bilibili_cookies_browser,
+            window_width=self.width(),
+            window_height=self.height(),
+        )
+        save_settings(self.settings)
+
     def cancel_current_job(self) -> None:
         if self._worker is not None:
             self._worker.request_cancel()
             self.cancel_button.setEnabled(False)
+
+    def handle_job_failed(self, job_id: str, error_text: str) -> None:
+        self._last_failed_job_id = job_id
+        error = classify_error(Exception(error_text))
+        self.result_panel.show_failure_actions(error.kind, error.message)
+
+    def handle_failure_action(self, action: str) -> None:
+        if action in {"chrome", "edge"}:
+            index = self.bilibili_input.cookies_combo.findData(action)
+            if index >= 0:
+                self.bilibili_input.cookies_combo.setCurrentIndex(index)
+            self.retry_failed_job()
+            return
+        if action == "choose_ffmpeg":
+            self.choose_ffmpeg_path()
+
+    def retry_failed_job(self) -> None:
+        if self._last_failed_job_id is None:
+            return
+        request = self._requests_by_job_id.get(self._last_failed_job_id)
+        if request is None:
+            return
+        try:
+            ffmpeg = find_ffmpeg(self.settings.ffmpeg_path or None)
+        except FileNotFoundError as exc:
+            QMessageBox.warning(self, "缺少 ffmpeg", str(exc))
+            return
+        self._run_requests([self._with_runtime_settings(request, ffmpeg)])
 
     def closeEvent(self, event) -> None:
         self.settings = AppSettings(

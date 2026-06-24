@@ -4,10 +4,11 @@ import os
 import subprocess
 from pathlib import Path
 
-from PySide6.QtCore import Qt
+from PySide6.QtCore import Qt, Signal
 from PySide6.QtWidgets import (
     QApplication,
     QHBoxLayout,
+    QLabel,
     QPushButton,
     QTableWidget,
     QTableWidgetItem,
@@ -29,6 +30,8 @@ def locate_path(path: Path) -> None:
 
 
 class ResultPanel(QWidget):
+    failure_action_requested = Signal(str)
+
     def __init__(self, parent: QWidget | None = None):
         super().__init__(parent)
         self.tabs = QTabWidget()
@@ -46,8 +49,24 @@ class ResultPanel(QWidget):
 
         self.copy_button = QPushButton("复制当前文案")
         self.copy_button.clicked.connect(self.copy_current_text)
+        self.failure_action_label = QLabel("")
+        self.retry_chrome_button = QPushButton("使用 Chrome Cookies 重试")
+        self.retry_edge_button = QPushButton("使用 Edge Cookies 重试")
+        self.choose_ffmpeg_button = QPushButton("选择 ffmpeg.exe")
+        for button in (self.retry_chrome_button, self.retry_edge_button, self.choose_ffmpeg_button):
+            button.setEnabled(False)
+        self.retry_chrome_button.clicked.connect(lambda: self.failure_action_requested.emit("chrome"))
+        self.retry_edge_button.clicked.connect(lambda: self.failure_action_requested.emit("edge"))
+        self.choose_ffmpeg_button.clicked.connect(lambda: self.failure_action_requested.emit("choose_ffmpeg"))
+
+        failure_layout = QHBoxLayout()
+        failure_layout.addWidget(self.failure_action_label, 1)
+        failure_layout.addWidget(self.retry_chrome_button)
+        failure_layout.addWidget(self.retry_edge_button)
+        failure_layout.addWidget(self.choose_ffmpeg_button)
 
         layout = QVBoxLayout(self)
+        layout.addLayout(failure_layout)
         layout.addWidget(self.tabs)
         layout.addWidget(self.copy_button)
 
@@ -61,6 +80,12 @@ class ResultPanel(QWidget):
         if event.detail:
             line = f"{line}\n{event.detail}"
         self.log_text.append(line)
+
+    def show_failure_actions(self, kind: str, message: str) -> None:
+        self.failure_action_label.setText(message)
+        self.retry_chrome_button.setEnabled(kind == "bilibili_requires_cookies")
+        self.retry_edge_button.setEnabled(kind == "bilibili_requires_cookies")
+        self.choose_ffmpeg_button.setEnabled(kind == "ffmpeg_missing")
 
     def show_result(self, result: JobResult) -> None:
         markdown_text = result.markdown_path.read_text(encoding="utf-8", errors="ignore")

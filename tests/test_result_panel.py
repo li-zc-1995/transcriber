@@ -37,3 +37,33 @@ def test_result_panel_lists_open_locate_and_copy_path_actions(tmp_path: Path) ->
     headers = [panel.files_table.horizontalHeaderItem(i).text() for i in range(panel.files_table.columnCount())]
     assert headers == ["类型", "路径", "打开", "定位", "复制路径"]
     assert panel.files_table.rowCount() == 4
+
+
+def test_result_panel_exposes_bilibili_cookie_retry_actions() -> None:
+    app()
+    panel = ResultPanel()
+    actions = []
+    panel.failure_action_requested.connect(actions.append)
+
+    panel.show_failure_actions("bilibili_requires_cookies", "B 站需要浏览器 Cookies")
+    panel.retry_chrome_button.click()
+    panel.retry_edge_button.click()
+
+    assert panel.failure_action_label.text() == "B 站需要浏览器 Cookies"
+    assert panel.retry_chrome_button.isEnabled()
+    assert panel.retry_edge_button.isEnabled()
+    assert actions == ["chrome", "edge"]
+
+
+def test_result_panel_exposes_ffmpeg_picker_action() -> None:
+    app()
+    panel = ResultPanel()
+    actions = []
+    panel.failure_action_requested.connect(actions.append)
+
+    panel.show_failure_actions("ffmpeg_missing", "未找到 ffmpeg")
+    panel.choose_ffmpeg_button.click()
+
+    assert panel.failure_action_label.text() == "未找到 ffmpeg"
+    assert panel.choose_ffmpeg_button.isEnabled()
+    assert actions == ["choose_ffmpeg"]

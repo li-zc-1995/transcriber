@@ -32,6 +32,7 @@ python -m src.gui
 - 输出目录选择和一键打开目录。
 - 任务队列、阶段进度、日志、结果文件列表。
 - 完成后可在结果区打开 Markdown、定位文件或复制文案。
+- B 站 412 可在失败区一键切换 Chrome/Edge Cookies 重试；ffmpeg 缺失可直接选择 `ffmpeg.exe`。
 
 ### 运行源码
 
