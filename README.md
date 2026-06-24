@@ -11,6 +11,10 @@
 - 默认使用 `openai-whisper small` 本地转写中文音频。
 - 输出原始 ASR 文本和 Markdown 校对稿。
 
+## 可视化界面规划
+
+项目已按 BMAD Method 完成 GUI V1 规划，目标是把当前 CLI 升级为 PySide6 桌面工作台，包含抖音/Bilibili 双 Tab、任务队列、阶段进度、输出路径管理和一键打开文件管理器。规划文档入口见 [docs/index.md](docs/index.md)。
+
 ## 使用方式
 
 ### 运行源码

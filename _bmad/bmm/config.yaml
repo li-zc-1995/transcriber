@@ -1,0 +1,11 @@
+project_name: "transcriber-gui"
+project_type: "desktop-app"
+project_level: 2
+output_folder: "docs"
+planning_artifacts: "docs"
+project_knowledge:
+  - "transcriber_github_upload/README.md"
+  - "transcriber_github_upload/src"
+communication_language: "Chinese"
+document_output_language: "Chinese"
+user_name: "lenovo"

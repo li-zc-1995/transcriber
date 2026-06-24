@@ -1,0 +1,18 @@
+project_name: "transcriber-gui"
+project_type: "desktop-app"
+project_level: 2
+current_phase: "implementation-ready"
+phases:
+  analysis:
+    brainstorming: "docs/brainstorming/brainstorming-session-2026-06-24-transcriber-gui.md"
+  planning:
+    prd: "docs/prd.md"
+    ux_design: "docs/ux-design-specification.md"
+  solutioning:
+    architecture: "docs/architecture.md"
+  implementation:
+    epics_and_stories: "docs/epics-and-stories.md"
+    implementation_readiness: "docs/implementation-readiness.md"
+notes:
+  - "GUI V1 is scoped as a PySide6 desktop workbench over the existing Python transcriber core."
+  - "GitHub publish repository intentionally excludes local tests and generated outputs."
