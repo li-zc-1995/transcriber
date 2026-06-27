@@ -30,6 +30,8 @@ class JobRequest:
     ffmpeg: str
     keep_wav: bool
     cookies_from_browser: tuple[str, str | None, str | None, str | None] | None = None
+    device: str = "auto"
+    compute_type: str = "int8"
 
     @property
     def job_id(self) -> str:

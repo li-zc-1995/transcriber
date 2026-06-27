@@ -13,7 +13,10 @@ def default_settings_path() -> Path:
 class AppSettings:
     output_dir: str = str(Path.cwd() / "outputs")
     ffmpeg_path: str = ""
-    whisper_model: str = "small"
+    transcription_backend: str = "faster-whisper"
+    whisper_model: str = "large-v3-turbo"
+    whisper_device: str = "auto"
+    whisper_compute_type: str = "int8"
     keep_wav: bool = False
     bilibili_cookies_browser: str = ""
     window_width: int = 1200

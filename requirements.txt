@@ -2,3 +2,4 @@ yt-dlp
 openai-whisper
 pyinstaller
 PySide6
+faster-whisper

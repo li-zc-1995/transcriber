@@ -8,7 +8,10 @@ def test_settings_round_trip_json(tmp_path: Path) -> None:
     settings = AppSettings(
         output_dir=str(tmp_path / "out"),
         ffmpeg_path="C:/tools/ffmpeg.exe",
-        whisper_model="base",
+        transcription_backend="faster-whisper",
+        whisper_model="large-v3-turbo",
+        whisper_device="auto",
+        whisper_compute_type="int8",
         keep_wav=True,
         bilibili_cookies_browser="chrome",
         window_width=1440,
@@ -19,6 +22,15 @@ def test_settings_round_trip_json(tmp_path: Path) -> None:
     loaded = load_settings(path)
 
     assert loaded == settings
+
+
+def test_default_settings_use_faster_whisper_large_v3_turbo() -> None:
+    settings = AppSettings()
+
+    assert settings.transcription_backend == "faster-whisper"
+    assert settings.whisper_model == "large-v3-turbo"
+    assert settings.whisper_device == "auto"
+    assert settings.whisper_compute_type == "int8"
 
 
 def test_load_settings_recovers_from_corrupt_json(tmp_path: Path) -> None:

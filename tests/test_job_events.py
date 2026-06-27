@@ -19,6 +19,22 @@ def test_job_request_builds_stable_job_id_from_platform_and_index(tmp_path: Path
     assert request.job_id == "bilibili-003"
 
 
+def test_job_request_defaults_to_auto_device_and_int8_compute(tmp_path: Path) -> None:
+    request = JobRequest(
+        url="https://b23.tv/MJoM0cX",
+        platform="bilibili",
+        index=1,
+        output_dir=tmp_path,
+        backend="faster-whisper",
+        model="large-v3-turbo",
+        ffmpeg="ffmpeg",
+        keep_wav=False,
+    )
+
+    assert request.device == "auto"
+    assert request.compute_type == "int8"
+
+
 def test_job_event_defaults_to_no_progress_or_detail() -> None:
     event = JobEvent(job_id="douyin-001", status=JobStatus.QUEUED, message="等待中")
 
