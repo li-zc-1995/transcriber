@@ -144,7 +144,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--model",
         default=default_model_name(),
-        help="openai-whisper 后端填模型名，如 small；ffmpeg-whisper 后端填 ggml 模型路径。",
+        help="faster-whisper 后端填模型名或本地模型路径，如 large-v3-turbo；openai-whisper 后端填模型名，如 small；ffmpeg-whisper 后端填 ggml 模型路径。",
     )
     parser.add_argument("--device", default="auto", help="faster-whisper 设备，例如 auto、cpu、cuda。")
     parser.add_argument("--compute-type", default="int8", help="faster-whisper 计算类型，例如 int8、float16。")

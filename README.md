@@ -8,7 +8,7 @@
 - 支持抖音短链和分享链接：`v.douyin.com`、`douyin.com`、`iesdouyin.com`、`amemv.com`。
 - 使用 `yt-dlp` 下载视频。
 - 使用 `ffmpeg` 提取 16 kHz 单声道 WAV 音频。
-- 默认使用 `openai-whisper small` 本地转写中文音频。
+- 默认使用 `faster-whisper large-v3-turbo` 本地转写中文音频。
 - 输出原始 ASR 文本和 Markdown 校对稿。
 
 ## 可视化界面规划
@@ -30,6 +30,7 @@ python -m src.gui
 - 多行粘贴链接或分享文本。
 - Bilibili 页面可选择 Chrome/Edge Cookies，用于处理 412 或登录态限制。
 - 输出目录选择和一键打开目录。
+- 设置中可手动选择转写后端、模型、运行设备和计算类型。
 - 任务队列、阶段进度、日志、结果文件列表。
 - 完成后可在结果区打开 Markdown、定位文件或复制文案。
 - B 站 412 可在失败区一键切换 Chrome/Edge Cookies 重试；ffmpeg 缺失可直接选择 `ffmpeg.exe`。
@@ -47,6 +48,12 @@ python -m src.cli "https://b23.tv/MJoM0cX"
 python -m src.cli "https://b23.tv/MJoM0cX" --cookies-from-browser chrome
 ```
 
+如果需要回退到旧的 `openai-whisper small` 行为：
+
+```powershell
+python -m src.cli "https://b23.tv/MJoM0cX" --backend openai-whisper --model small
+```
+
 不传链接时会进入粘贴输入模式：
 
 ```powershell
@@ -61,7 +68,7 @@ python -m src.cli
 .\transcriber.exe
 ```
 
-当前 PyInstaller 配置默认打包 GUI 入口，双击 `transcriber.exe` 会打开桌面窗口。CLI 仍可通过源码方式运行。默认输出到程序目录下的 `outputs` 文件夹。默认转写后端是 `openai-whisper small`，会使用本机缓存的 `small.pt` 模型；第一次运行如果没有缓存，会自动下载。
+当前 PyInstaller 配置默认打包 GUI 入口，双击 `transcriber.exe` 会打开桌面窗口。CLI 仍可通过源码方式运行。默认输出到程序目录下的 `outputs` 文件夹。默认转写后端是 `faster-whisper large-v3-turbo`，第一次运行如果没有本机模型缓存，会自动下载模型文件。模型、运行设备和计算类型可在 GUI 设置中手动调整。
 
 ## 支持的链接
 
@@ -82,9 +89,10 @@ python -m src.cli
 ## 依赖
 
 - `ffmpeg.exe`：放在 exe 同目录，或者加入系统 PATH。需要支持常规音频提取；如果使用 `--backend ffmpeg-whisper`，还需要支持 `whisper` filter。
-- `small.pt`：openai-whisper small 模型，默认缓存在 `C:\Users\<用户名>\.cache\whisper\small.pt`。
+- `large-v3-turbo`：默认 `faster-whisper` 模型，首次运行会下载到本机 Hugging Face 缓存。
+- `small.pt`：仅在回退到 `--backend openai-whisper --model small` 时使用，默认缓存在 `C:\Users\<用户名>\.cache\whisper\small.pt`。
 
-`large-v3-turbo` 大约 1.6GB，默认不使用。需要 whisper.cpp 后端时，可以通过 `--backend ffmpeg-whisper --model <ggml模型路径>` 指定模型。
+需要 whisper.cpp 后端时，可以通过 `--backend ffmpeg-whisper --model <ggml模型路径>` 指定模型。
 
 ## 打包
 

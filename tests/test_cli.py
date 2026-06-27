@@ -26,3 +26,11 @@ def test_cli_still_accepts_openai_whisper_fallback() -> None:
 
     assert args.backend == "openai-whisper"
     assert args.model == "small"
+
+
+def test_cli_model_help_mentions_faster_whisper_default() -> None:
+    parser = build_parser()
+
+    help_text = parser.format_help()
+
+    assert "faster-whisper 后端填模型名" in help_text
