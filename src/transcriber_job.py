@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import os
 import subprocess
 from pathlib import Path
 from typing import Any, Callable
@@ -39,6 +40,7 @@ def download_video(
     index: int,
     cookies_from_browser: tuple[str, str | None, str | None, str | None] | None = None,
     progress_hook: Callable[[dict[str, Any]], None] | None = None,
+    ffmpeg: str | None = None,
 ) -> tuple[Path, dict[str, Any]]:
     output_dir.mkdir(parents=True, exist_ok=True)
     template = str(output_dir / f"{index:02d}_%(id)s.%(ext)s")
@@ -50,6 +52,8 @@ def download_video(
         "quiet": False,
         "no_warnings": False,
     }
+    if ffmpeg:
+        options["ffmpeg_location"] = ffmpeg
     if cookies_from_browser:
         options["cookiesfrombrowser"] = cookies_from_browser
     if progress_hook:
@@ -100,11 +104,23 @@ def transcribe_audio_with_ffmpeg_whisper(ffmpeg: str, wav_path: Path, model_path
     )
 
 
-def transcribe_audio_with_openai_whisper(wav_path: Path, model_name: str, transcript_path: Path) -> str:
+def transcribe_audio_with_openai_whisper(
+    wav_path: Path,
+    model_name: str,
+    transcript_path: Path,
+    ffmpeg: str | None = None,
+) -> str:
     import whisper
 
-    model = whisper.load_model(model_name)
-    result = model.transcribe(str(wav_path), language="zh", task="transcribe", fp16=False, verbose=False)
+    old_path = os.environ.get("PATH", "")
+    ffmpeg_path = Path(ffmpeg) if ffmpeg else None
+    if ffmpeg_path and ffmpeg_path.exists():
+        os.environ["PATH"] = f"{ffmpeg_path.parent}{os.pathsep}{old_path}"
+    try:
+        model = whisper.load_model(model_name)
+        result = model.transcribe(str(wav_path), language="zh", task="transcribe", fp16=False, verbose=False)
+    finally:
+        os.environ["PATH"] = old_path
     lines: list[str] = []
     clean_parts: list[str] = []
     for segment in result.get("segments", []):
@@ -183,6 +199,7 @@ class TranscriberJob:
                 request.index,
                 request.cookies_from_browser,
                 self._on_download_progress,
+                request.ffmpeg,
             )
             self._ensure_not_cancelled()
             self._emit(JobStatus.MERGING, "下载完成，准备整理文件")
@@ -212,7 +229,7 @@ class TranscriberJob:
                 clean_text = clean_transcript_text(raw_text)
                 generation_note = f"yt-dlp 下载视频，ffmpeg 提取音频，ffmpeg whisper filter 使用 {request.model} 转写。"
             else:
-                clean_source = transcribe_audio_with_openai_whisper(wav_path, request.model, raw_path)
+                clean_source = transcribe_audio_with_openai_whisper(wav_path, request.model, raw_path, request.ffmpeg)
                 raw_text = raw_path.read_text(encoding="utf-8", errors="ignore")
                 clean_text = clean_transcript_text(clean_source)
                 generation_note = f"yt-dlp 下载视频，ffmpeg 提取音频，openai-whisper {request.model} 模型转写。"
