@@ -135,6 +135,31 @@ def transcribe_audio_with_openai_whisper(
     return "\n".join(clean_parts)
 
 
+def transcribe_audio_with_faster_whisper(
+    wav_path: Path,
+    model_name_or_path: str,
+    transcript_path: Path,
+    device: str = "auto",
+    compute_type: str = "int8",
+) -> str:
+    from faster_whisper import WhisperModel
+
+    model = WhisperModel(model_name_or_path, device=device, compute_type=compute_type)
+    segments, _info = model.transcribe(str(wav_path), language="zh", task="transcribe")
+    lines: list[str] = []
+    clean_parts: list[str] = []
+    for segment in segments:
+        text = str(getattr(segment, "text", "")).strip()
+        if not text:
+            continue
+        start = float(getattr(segment, "start", 0.0))
+        end = float(getattr(segment, "end", 0.0))
+        lines.append(f"[{start:.2f}-{end:.2f}] {text}")
+        clean_parts.append(text)
+    transcript_path.write_text("\n".join(lines), encoding="utf-8")
+    return "\n".join(clean_parts)
+
+
 def classify_error(exc: Exception) -> UserFacingError:
     detail = str(exc)
     lowered = detail.lower()
@@ -221,13 +246,28 @@ class TranscriberJob:
             extract_audio(request.ffmpeg, video_path, wav_path)
 
             self._ensure_not_cancelled()
-            self._emit(JobStatus.TRANSCRIBING, f"转写中：{request.model}")
+            self._emit(JobStatus.TRANSCRIBING, self._transcribing_message(request))
             if request.backend == "ffmpeg-whisper":
                 model_path = Path(request.model).expanduser().resolve()
                 transcribe_audio_with_ffmpeg_whisper(request.ffmpeg, wav_path, model_path, raw_path)
                 raw_text = raw_path.read_text(encoding="utf-8", errors="ignore")
                 clean_text = clean_transcript_text(raw_text)
                 generation_note = f"yt-dlp 下载视频，ffmpeg 提取音频，ffmpeg whisper filter 使用 {request.model} 转写。"
+            elif request.backend == "faster-whisper":
+                clean_source = transcribe_audio_with_faster_whisper(
+                    wav_path,
+                    request.model,
+                    raw_path,
+                    device=request.device,
+                    compute_type=request.compute_type,
+                )
+                raw_text = raw_path.read_text(encoding="utf-8", errors="ignore")
+                clean_text = clean_transcript_text(clean_source)
+                generation_note = (
+                    "yt-dlp 下载视频，ffmpeg 提取音频，"
+                    f"faster-whisper {request.model} 模型转写，"
+                    f"device={request.device}，compute_type={request.compute_type}。"
+                )
             else:
                 clean_source = transcribe_audio_with_openai_whisper(wav_path, request.model, raw_path, request.ffmpeg)
                 raw_text = raw_path.read_text(encoding="utf-8", errors="ignore")
@@ -303,3 +343,8 @@ class TranscriberJob:
     def _ensure_not_cancelled(self) -> None:
         if self._cancel_requested:
             raise JobCancelled()
+
+    def _transcribing_message(self, request: JobRequest) -> str:
+        if request.backend == "faster-whisper":
+            return f"转写中：faster-whisper {request.model} {request.compute_type}"
+        return f"转写中：{request.model}"
