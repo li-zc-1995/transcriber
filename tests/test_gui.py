@@ -8,6 +8,7 @@ from PySide6.QtWidgets import QApplication
 from src.config import AppSettings
 from src.gui_widgets.main_window import MainWindow
 from src.gui_widgets.platform_input import detect_platform
+from src.gui_widgets.settings_dialog import SettingsDialog
 
 
 def app() -> QApplication:
@@ -32,6 +33,46 @@ def test_main_window_exposes_platform_tabs_and_output_controls(tmp_path: Path) -
     assert window.output_dir_edit.text() == str(tmp_path)
     assert window.bilibili_input.cookies_combo.currentText() == "Chrome"
     assert window.douyin_input.cookies_combo is None
+
+
+def test_settings_dialog_preserves_transcription_runtime_options(tmp_path: Path) -> None:
+    app()
+    settings = AppSettings(
+        output_dir=str(tmp_path),
+        transcription_backend="openai-whisper",
+        whisper_model="medium",
+        whisper_device="cpu",
+        whisper_compute_type="float32",
+    )
+    dialog = SettingsDialog(settings)
+
+    saved = dialog.settings(1200, 760)
+
+    assert saved.transcription_backend == "openai-whisper"
+    assert saved.whisper_model == "medium"
+    assert saved.whisper_device == "cpu"
+    assert saved.whisper_compute_type == "float32"
+
+
+def test_main_window_creates_requests_with_transcription_settings(tmp_path: Path) -> None:
+    app()
+    window = MainWindow(
+        settings=AppSettings(
+            output_dir=str(tmp_path),
+            transcription_backend="faster-whisper",
+            whisper_model="large-v3-turbo",
+            whisper_device="auto",
+            whisper_compute_type="int8",
+        )
+    )
+
+    window.add_tasks("bilibili", ["https://b23.tv/MJoM0cX"], None)
+    request = next(iter(window._requests_by_job_id.values()))
+
+    assert request.backend == "faster-whisper"
+    assert request.model == "large-v3-turbo"
+    assert request.device == "auto"
+    assert request.compute_type == "int8"
 
 
 def test_task_list_adds_unique_urls(tmp_path: Path) -> None:

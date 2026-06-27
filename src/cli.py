@@ -31,7 +31,7 @@ def app_dir() -> Path:
 
 
 def default_model_name() -> str:
-    return "small"
+    return "large-v3-turbo"
 
 
 def default_output_dir() -> Path:
@@ -110,6 +110,8 @@ def process_url(
     ffmpeg: str,
     keep_wav: bool,
     cookies_from_browser: tuple[str, str | None, str | None, str | None] | None,
+    device: str = "auto",
+    compute_type: str = "int8",
 ) -> Path:
     platform = "bilibili" if any(domain in url.lower() for domain in ("bilibili.com", "b23.tv", "bili2233.cn")) else "douyin"
     request = JobRequest(
@@ -122,6 +124,8 @@ def process_url(
         ffmpeg=ffmpeg,
         keep_wav=keep_wav,
         cookies_from_browser=cookies_from_browser,
+        device=device,
+        compute_type=compute_type,
     )
     result = TranscriberJob(request, print_job_event).run()
     return result.markdown_path
@@ -133,15 +137,17 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--out", default=str(default_output_dir()), help="输出目录。")
     parser.add_argument(
         "--backend",
-        choices=["openai-whisper", "ffmpeg-whisper"],
-        default="openai-whisper",
-        help="转写后端。默认 openai-whisper，使用本机缓存的 small.pt。",
+        choices=["faster-whisper", "openai-whisper", "ffmpeg-whisper"],
+        default="faster-whisper",
+        help="转写后端。默认 faster-whisper，使用 large-v3-turbo。",
     )
     parser.add_argument(
         "--model",
         default=default_model_name(),
         help="openai-whisper 后端填模型名，如 small；ffmpeg-whisper 后端填 ggml 模型路径。",
     )
+    parser.add_argument("--device", default="auto", help="faster-whisper 设备，例如 auto、cpu、cuda。")
+    parser.add_argument("--compute-type", default="int8", help="faster-whisper 计算类型，例如 int8、float16。")
     parser.add_argument("--ffmpeg", default=None, help="ffmpeg.exe 路径。")
     parser.add_argument("--keep-wav", action="store_true", help="保留中间 wav 音频文件。")
     parser.add_argument(
@@ -199,6 +205,8 @@ def main(argv: list[str] | None = None) -> int:
                 ffmpeg=ffmpeg,
                 keep_wav=args.keep_wav,
                 cookies_from_browser=cookies_from_browser,
+                device=args.device,
+                compute_type=args.compute_type,
             )
         except Exception as exc:
             failures.append((url, str(exc)))

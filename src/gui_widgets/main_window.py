@@ -102,11 +102,13 @@ class MainWindow(QMainWindow):
                 platform=platform,
                 index=index,
                 output_dir=Path(self.output_dir_edit.text()).expanduser().resolve(),
-                backend="openai-whisper",
+                backend=self.settings.transcription_backend,
                 model=self.settings.whisper_model,
                 ffmpeg=self.settings.ffmpeg_path or "ffmpeg",
                 keep_wav=self.settings.keep_wav,
                 cookies_from_browser=(cookies_browser, None, None, None) if cookies_browser else None,
+                device=self.settings.whisper_device,
+                compute_type=self.settings.whisper_compute_type,
             )
             self._url_to_job_id[url] = job_id
             self._requests_by_job_id[job_id] = request
@@ -160,7 +162,10 @@ class MainWindow(QMainWindow):
             self.settings = AppSettings(
                 output_dir=directory,
                 ffmpeg_path=self.settings.ffmpeg_path,
+                transcription_backend=self.settings.transcription_backend,
                 whisper_model=self.settings.whisper_model,
+                whisper_device=self.settings.whisper_device,
+                whisper_compute_type=self.settings.whisper_compute_type,
                 keep_wav=self.settings.keep_wav,
                 bilibili_cookies_browser=self.settings.bilibili_cookies_browser,
                 window_width=self.width(),
@@ -187,7 +192,10 @@ class MainWindow(QMainWindow):
         self.settings = AppSettings(
             output_dir=self.output_dir_edit.text(),
             ffmpeg_path=path,
+            transcription_backend=self.settings.transcription_backend,
             whisper_model=self.settings.whisper_model,
+            whisper_device=self.settings.whisper_device,
+            whisper_compute_type=self.settings.whisper_compute_type,
             keep_wav=self.settings.keep_wav,
             bilibili_cookies_browser=self.settings.bilibili_cookies_browser,
             window_width=self.width(),
@@ -232,7 +240,10 @@ class MainWindow(QMainWindow):
         self.settings = AppSettings(
             output_dir=self.output_dir_edit.text(),
             ffmpeg_path=self.settings.ffmpeg_path,
+            transcription_backend=self.settings.transcription_backend,
             whisper_model=self.settings.whisper_model,
+            whisper_device=self.settings.whisper_device,
+            whisper_compute_type=self.settings.whisper_compute_type,
             keep_wav=self.settings.keep_wav,
             bilibili_cookies_browser=self.settings.bilibili_cookies_browser,
             window_width=self.width(),
@@ -251,11 +262,13 @@ class MainWindow(QMainWindow):
             platform=request.platform,
             index=request.index,
             output_dir=Path(self.output_dir_edit.text()).expanduser().resolve(),
-            backend=request.backend,
+            backend=self.settings.transcription_backend,
             model=self.settings.whisper_model,
             ffmpeg=ffmpeg,
             keep_wav=self.settings.keep_wav,
             cookies_from_browser=cookies_from_browser,
+            device=self.settings.whisper_device,
+            compute_type=self.settings.whisper_compute_type,
         )
 
     def _clear_worker(self) -> None:

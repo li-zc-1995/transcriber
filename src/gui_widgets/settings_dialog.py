@@ -22,7 +22,32 @@ class SettingsDialog(QDialog):
         self.setWindowTitle("设置")
         self.output_dir_edit = QLineEdit(settings.output_dir)
         self.ffmpeg_edit = QLineEdit(settings.ffmpeg_path)
-        self.model_edit = QLineEdit(settings.whisper_model)
+        self.backend_combo = QComboBox()
+        self.backend_combo.addItem("faster-whisper", "faster-whisper")
+        self.backend_combo.addItem("openai-whisper", "openai-whisper")
+        self.backend_combo.addItem("ffmpeg-whisper", "ffmpeg-whisper")
+        backend_index = self.backend_combo.findData(settings.transcription_backend)
+        if backend_index >= 0:
+            self.backend_combo.setCurrentIndex(backend_index)
+
+        self.model_combo = QComboBox()
+        self.model_combo.setEditable(True)
+        for model in ["large-v3-turbo", "large-v3", "medium", "small", "base"]:
+            self.model_combo.addItem(model)
+        self.model_combo.setCurrentText(settings.whisper_model)
+
+        self.device_combo = QComboBox()
+        self.device_combo.setEditable(True)
+        for device in ["auto", "cpu", "cuda"]:
+            self.device_combo.addItem(device)
+        self.device_combo.setCurrentText(settings.whisper_device)
+
+        self.compute_type_combo = QComboBox()
+        self.compute_type_combo.setEditable(True)
+        for compute_type in ["int8", "float16", "float32", "default"]:
+            self.compute_type_combo.addItem(compute_type)
+        self.compute_type_combo.setCurrentText(settings.whisper_compute_type)
+
         self.keep_wav_check = QCheckBox("保留 WAV")
         self.keep_wav_check.setChecked(settings.keep_wav)
         self.cookies_combo = QComboBox()
@@ -48,7 +73,10 @@ class SettingsDialog(QDialog):
         form = QFormLayout(self)
         form.addRow("输出目录", output_layout)
         form.addRow("ffmpeg", ffmpeg_layout)
-        form.addRow("Whisper 模型", self.model_edit)
+        form.addRow("转写后端", self.backend_combo)
+        form.addRow("Whisper 模型", self.model_combo)
+        form.addRow("运行设备", self.device_combo)
+        form.addRow("计算类型", self.compute_type_combo)
         form.addRow("B 站 Cookies", self.cookies_combo)
         form.addRow("", self.keep_wav_check)
         buttons = QDialogButtonBox(QDialogButtonBox.StandardButton.Save | QDialogButtonBox.StandardButton.Cancel)
@@ -60,7 +88,10 @@ class SettingsDialog(QDialog):
         return AppSettings(
             output_dir=self.output_dir_edit.text().strip(),
             ffmpeg_path=self.ffmpeg_edit.text().strip(),
-            whisper_model=self.model_edit.text().strip() or "small",
+            transcription_backend=str(self.backend_combo.currentData() or "faster-whisper"),
+            whisper_model=self.model_combo.currentText().strip() or "large-v3-turbo",
+            whisper_device=self.device_combo.currentText().strip() or "auto",
+            whisper_compute_type=self.compute_type_combo.currentText().strip() or "int8",
             keep_wav=self.keep_wav_check.isChecked(),
             bilibili_cookies_browser=str(self.cookies_combo.currentData() or ""),
             window_width=window_width,
