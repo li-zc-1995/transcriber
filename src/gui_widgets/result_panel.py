@@ -83,8 +83,9 @@ class ResultPanel(QWidget):
 
     def show_failure_actions(self, kind: str, message: str) -> None:
         self.failure_action_label.setText(message)
-        self.retry_chrome_button.setEnabled(kind == "bilibili_requires_cookies")
-        self.retry_edge_button.setEnabled(kind == "bilibili_requires_cookies")
+        can_retry_with_cookies = kind in {"bilibili_requires_cookies", "browser_cookies_failed"}
+        self.retry_chrome_button.setEnabled(can_retry_with_cookies)
+        self.retry_edge_button.setEnabled(can_retry_with_cookies)
         self.choose_ffmpeg_button.setEnabled(kind == "ffmpeg_missing")
 
     def show_result(self, result: JobResult) -> None:

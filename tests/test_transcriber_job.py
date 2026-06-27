@@ -69,3 +69,17 @@ def test_classify_error_maps_ssl_eof_to_network_issue() -> None:
 
     assert error.kind == "network_ssl_failed"
     assert "网络" in error.message
+
+
+def test_classify_error_maps_browser_cookie_decryption_failure_to_cookie_issue() -> None:
+    error = classify_error(Exception("ERROR: Failed to decrypt with DPAPI. See https://github.com/yt-dlp/yt-dlp/issues/10927"))
+
+    assert error.kind == "browser_cookies_failed"
+    assert "Cookies" in error.message
+
+
+def test_classify_error_maps_browser_cookie_database_copy_failure_to_cookie_issue() -> None:
+    error = classify_error(Exception("ERROR: Could not copy Chrome cookie database. See https://github.com/yt-dlp/yt-dlp/issues/7271"))
+
+    assert error.kind == "browser_cookies_failed"
+    assert "Cookies" in error.message

@@ -92,12 +92,27 @@ def test_main_window_maps_ffmpeg_failure_to_picker_action(tmp_path: Path) -> Non
     assert calls == ["choose"]
 
 
-def test_retry_failed_job_only_runs_failed_request(tmp_path: Path) -> None:
+def test_main_window_maps_cookie_read_failure_to_cookie_retry(tmp_path: Path) -> None:
+    app()
+    window = MainWindow(settings=AppSettings(output_dir=str(tmp_path)))
+    calls = []
+    window.retry_failed_job = lambda: calls.append("retry")  # type: ignore[method-assign]
+
+    window.handle_job_failed("bilibili-001", "ERROR: Failed to decrypt with DPAPI")
+    window.result_panel.retry_edge_button.click()
+
+    assert window.result_panel.retry_edge_button.isEnabled()
+    assert window.bilibili_input.cookies_combo.currentData() == "edge"
+    assert calls == ["retry"]
+
+
+def test_retry_failed_job_only_runs_failed_request(monkeypatch, tmp_path: Path) -> None:
     app()
     window = MainWindow(settings=AppSettings(output_dir=str(tmp_path)))
     window.add_tasks("bilibili", ["https://b23.tv/one"], None)
     window.add_tasks("douyin", ["https://v.douyin.com/two/"], None)
     captured = []
+    monkeypatch.setattr("src.gui_widgets.main_window.find_ffmpeg", lambda _explicit=None: "ffmpeg")
     window._run_requests = lambda requests: captured.extend(requests)  # type: ignore[method-assign]
 
     window.handle_job_failed("bilibili-001", "HTTP Error 412: Precondition Failed")

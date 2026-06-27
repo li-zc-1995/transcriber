@@ -139,6 +139,15 @@ def classify_error(exc: Exception) -> UserFacingError:
             message="B 站网络连接失败，请检查网络、代理/VPN 或稍后重试。",
             detail=detail,
         )
+    if "failed to decrypt with dpapi" in lowered or (
+        ("cookie" in lowered or "cookies" in lowered)
+        and any(marker in lowered for marker in ("decrypt", "database", "keyring", "dpapi"))
+    ):
+        return UserFacingError(
+            kind="browser_cookies_failed",
+            message="浏览器 Cookies 读取失败，请关闭浏览器后重试，或切换 Chrome/Edge Cookies。",
+            detail=detail,
+        )
     if isinstance(exc, FileNotFoundError) or "ffmpeg" in lowered and "找不到" in detail:
         return UserFacingError(kind="ffmpeg_missing", message="未找到 ffmpeg，请选择 ffmpeg.exe。", detail=detail)
     if isinstance(exc, subprocess.CalledProcessError):

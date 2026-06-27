@@ -79,3 +79,20 @@ def test_result_panel_network_failure_does_not_enable_wrong_actions() -> None:
     assert not panel.retry_chrome_button.isEnabled()
     assert not panel.retry_edge_button.isEnabled()
     assert not panel.choose_ffmpeg_button.isEnabled()
+
+
+def test_result_panel_exposes_cookie_retry_actions_for_browser_cookie_failure() -> None:
+    app()
+    panel = ResultPanel()
+    actions = []
+    panel.failure_action_requested.connect(actions.append)
+
+    panel.show_failure_actions("browser_cookies_failed", "浏览器 Cookies 读取失败")
+    panel.retry_chrome_button.click()
+    panel.retry_edge_button.click()
+
+    assert panel.failure_action_label.text() == "浏览器 Cookies 读取失败"
+    assert panel.retry_chrome_button.isEnabled()
+    assert panel.retry_edge_button.isEnabled()
+    assert not panel.choose_ffmpeg_button.isEnabled()
+    assert actions == ["chrome", "edge"]
