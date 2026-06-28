@@ -180,6 +180,12 @@ def classify_error(exc: Exception) -> UserFacingError:
             message="B 站网络连接失败，请检查网络、代理/VPN 或稍后重试。",
             detail=detail,
         )
+    if "could not copy chrome cookie database" in lowered:
+        return UserFacingError(
+            kind="browser_cookies_failed",
+            message="浏览器 Cookies 数据库被占用，请完全退出 Chrome/Edge（包括后台进程）后重试，或切换浏览器 Cookies。",
+            detail=detail,
+        )
     if "failed to decrypt with dpapi" in lowered or (
         ("cookie" in lowered or "cookies" in lowered)
         and any(marker in lowered for marker in ("decrypt", "database", "keyring", "dpapi"))

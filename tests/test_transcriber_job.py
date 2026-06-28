@@ -233,3 +233,4 @@ def test_classify_error_maps_browser_cookie_database_copy_failure_to_cookie_issu
 
     assert error.kind == "browser_cookies_failed"
     assert "Cookies" in error.message
+    assert "完全退出" in error.message
