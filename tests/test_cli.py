@@ -1,4 +1,5 @@
-from src.cli import build_parser, default_model_name
+from src import cli
+from src.cli import build_parser, default_model_name, find_ffmpeg
 
 
 def test_cli_defaults_to_faster_whisper_large_v3_turbo() -> None:
@@ -34,3 +35,17 @@ def test_cli_model_help_mentions_faster_whisper_default() -> None:
     help_text = parser.format_help()
 
     assert "faster-whisper 后端填模型名" in help_text
+
+
+def test_find_ffmpeg_uses_pyinstaller_internal_bundle(monkeypatch, tmp_path) -> None:
+    app_dir = tmp_path / "transcriber"
+    internal_dir = app_dir / "_internal"
+    internal_dir.mkdir(parents=True)
+    bundled_ffmpeg = internal_dir / "ffmpeg.exe"
+    bundled_ffmpeg.write_text("fake", encoding="utf-8")
+
+    monkeypatch.setattr(cli.sys, "frozen", True, raising=False)
+    monkeypatch.setattr(cli.sys, "executable", str(app_dir / "transcriber.exe"))
+    monkeypatch.setattr(cli.shutil, "which", lambda _name: None)
+
+    assert find_ffmpeg() == str(bundled_ffmpeg)

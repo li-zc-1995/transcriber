@@ -31,6 +31,15 @@ datas += tmp_ret[0]; binaries += tmp_ret[1]; hiddenimports += tmp_ret[2]
 tmp_ret = collect_all('onnxruntime')
 datas += tmp_ret[0]; binaries += tmp_ret[1]; hiddenimports += tmp_ret[2]
 
+ffmpeg_candidates = [
+    ROOT / 'ffmpeg.exe',
+    ROOT / 'verification_outputs' / 'ffmpeg.exe',
+]
+for ffmpeg_candidate in ffmpeg_candidates:
+    if ffmpeg_candidate.exists():
+        binaries.append((str(ffmpeg_candidate), "."))
+        break
+
 
 a = Analysis(
     [str(ROOT / 'src' / 'gui.py')],

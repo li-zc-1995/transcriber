@@ -43,6 +43,7 @@ def find_ffmpeg(explicit: str | None = None) -> str:
     if explicit:
         candidates.append(explicit)
     candidates.append(str(app_dir() / "ffmpeg.exe"))
+    candidates.append(str(app_dir() / "_internal" / "ffmpeg.exe"))
     found = shutil.which("ffmpeg")
     if found:
         candidates.append(found)
