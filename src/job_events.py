@@ -30,6 +30,7 @@ class JobRequest:
     ffmpeg: str
     keep_wav: bool
     cookies_from_browser: tuple[str, str | None, str | None, str | None] | None = None
+    cookies_file: Path | None = None
     device: str = "auto"
     compute_type: str = "int8"
 

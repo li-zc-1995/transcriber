@@ -39,6 +39,7 @@ def download_video(
     output_dir: Path,
     index: int,
     cookies_from_browser: tuple[str, str | None, str | None, str | None] | None = None,
+    cookies_file: Path | None = None,
     progress_hook: Callable[[dict[str, Any]], None] | None = None,
     ffmpeg: str | None = None,
 ) -> tuple[Path, dict[str, Any]]:
@@ -54,7 +55,9 @@ def download_video(
     }
     if ffmpeg:
         options["ffmpeg_location"] = ffmpeg
-    if cookies_from_browser:
+    if cookies_file:
+        options["cookiefile"] = str(cookies_file)
+    elif cookies_from_browser:
         options["cookiesfrombrowser"] = cookies_from_browser
     if progress_hook:
         options["progress_hooks"] = [progress_hook]
@@ -192,7 +195,7 @@ def classify_error(exc: Exception) -> UserFacingError:
     ):
         return UserFacingError(
             kind="browser_cookies_failed",
-            message="浏览器 Cookies 读取失败，请关闭浏览器后重试，或切换 Chrome/Edge Cookies。",
+            message="浏览器 Cookies 解密失败，请导出 B 站 cookies.txt 后在设置中选择该文件，或切换浏览器 Cookies。",
             detail=detail,
         )
     if isinstance(exc, FileNotFoundError) or "ffmpeg" in lowered and "找不到" in detail:
@@ -229,6 +232,7 @@ class TranscriberJob:
                 request.output_dir,
                 request.index,
                 request.cookies_from_browser,
+                request.cookies_file,
                 self._on_download_progress,
                 request.ffmpeg,
             )

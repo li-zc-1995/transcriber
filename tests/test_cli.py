@@ -29,6 +29,13 @@ def test_cli_still_accepts_openai_whisper_fallback() -> None:
     assert args.model == "small"
 
 
+def test_cli_accepts_cookie_file_for_bilibili() -> None:
+    parser = build_parser()
+    args = parser.parse_args(["--cookies", "C:/tmp/bilibili-cookies.txt", "https://b23.tv/MJoM0cX"])
+
+    assert args.cookies == "C:/tmp/bilibili-cookies.txt"
+
+
 def test_cli_model_help_mentions_faster_whisper_default() -> None:
     parser = build_parser()
 

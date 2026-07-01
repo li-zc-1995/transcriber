@@ -22,6 +22,7 @@ class SettingsDialog(QDialog):
         self.setWindowTitle("设置")
         self.output_dir_edit = QLineEdit(settings.output_dir)
         self.ffmpeg_edit = QLineEdit(settings.ffmpeg_path)
+        self.cookies_file_edit = QLineEdit(settings.bilibili_cookies_file)
         self.backend_combo = QComboBox()
         self.backend_combo.addItem("faster-whisper", "faster-whisper")
         self.backend_combo.addItem("openai-whisper", "openai-whisper")
@@ -70,6 +71,12 @@ class SettingsDialog(QDialog):
         ffmpeg_layout.addWidget(self.ffmpeg_edit)
         ffmpeg_layout.addWidget(browse_ffmpeg)
 
+        browse_cookies_file = QPushButton("选择")
+        browse_cookies_file.clicked.connect(self.choose_cookies_file)
+        cookies_file_layout = QHBoxLayout()
+        cookies_file_layout.addWidget(self.cookies_file_edit)
+        cookies_file_layout.addWidget(browse_cookies_file)
+
         form = QFormLayout(self)
         form.addRow("输出目录", output_layout)
         form.addRow("ffmpeg", ffmpeg_layout)
@@ -78,6 +85,7 @@ class SettingsDialog(QDialog):
         form.addRow("运行设备", self.device_combo)
         form.addRow("计算类型", self.compute_type_combo)
         form.addRow("B 站 Cookies", self.cookies_combo)
+        form.addRow("B 站 cookies.txt", cookies_file_layout)
         form.addRow("", self.keep_wav_check)
         buttons = QDialogButtonBox(QDialogButtonBox.StandardButton.Save | QDialogButtonBox.StandardButton.Cancel)
         buttons.accepted.connect(self.accept)
@@ -94,6 +102,7 @@ class SettingsDialog(QDialog):
             whisper_compute_type=self.compute_type_combo.currentText().strip() or "int8",
             keep_wav=self.keep_wav_check.isChecked(),
             bilibili_cookies_browser=str(self.cookies_combo.currentData() or ""),
+            bilibili_cookies_file=self.cookies_file_edit.text().strip(),
             window_width=window_width,
             window_height=window_height,
         )
@@ -107,3 +116,13 @@ class SettingsDialog(QDialog):
         path, _ = QFileDialog.getOpenFileName(self, "选择 ffmpeg.exe", "", "ffmpeg.exe (ffmpeg.exe);;Executables (*.exe)")
         if path:
             self.ffmpeg_edit.setText(path)
+
+    def choose_cookies_file(self) -> None:
+        path, _ = QFileDialog.getOpenFileName(
+            self,
+            "选择 B 站 cookies.txt",
+            self.cookies_file_edit.text(),
+            "Cookies files (*.txt);;All files (*.*)",
+        )
+        if path:
+            self.cookies_file_edit.setText(path)

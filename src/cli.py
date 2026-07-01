@@ -111,6 +111,7 @@ def process_url(
     ffmpeg: str,
     keep_wav: bool,
     cookies_from_browser: tuple[str, str | None, str | None, str | None] | None,
+    cookies_file: Path | None = None,
     device: str = "auto",
     compute_type: str = "int8",
 ) -> Path:
@@ -125,6 +126,7 @@ def process_url(
         ffmpeg=ffmpeg,
         keep_wav=keep_wav,
         cookies_from_browser=cookies_from_browser,
+        cookies_file=cookies_file,
         device=device,
         compute_type=compute_type,
     )
@@ -156,6 +158,11 @@ def build_parser() -> argparse.ArgumentParser:
         default=None,
         help="从浏览器读取 cookies，例如 chrome 或 edge。用于处理 B 站 412/登录态限制。",
     )
+    parser.add_argument(
+        "--cookies",
+        default=None,
+        help="读取 Netscape 格式 cookies.txt 文件。用于绕过新版 Chrome/Edge Cookies 解密失败。",
+    )
     return parser
 
 
@@ -183,6 +190,11 @@ def main(argv: list[str] | None = None) -> int:
         print(exc)
         pause_if_interactive()
         return 1
+    cookies_file = Path(args.cookies).expanduser().resolve() if args.cookies else None
+    if cookies_file is not None and not cookies_file.exists():
+        print(f"找不到 cookies 文件：{cookies_file}")
+        pause_if_interactive()
+        return 1
 
     try:
         ffmpeg = find_ffmpeg(args.ffmpeg)
@@ -206,6 +218,7 @@ def main(argv: list[str] | None = None) -> int:
                 ffmpeg=ffmpeg,
                 keep_wav=args.keep_wav,
                 cookies_from_browser=cookies_from_browser,
+                cookies_file=cookies_file,
                 device=args.device,
                 compute_type=args.compute_type,
             )

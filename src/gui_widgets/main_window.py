@@ -121,6 +121,9 @@ class MainWindow(QMainWindow):
                 ffmpeg=self.settings.ffmpeg_path or "ffmpeg",
                 keep_wav=self.settings.keep_wav,
                 cookies_from_browser=(cookies_browser, None, None, None) if cookies_browser else None,
+                cookies_file=Path(self.settings.bilibili_cookies_file).expanduser().resolve()
+                if self.settings.bilibili_cookies_file
+                else None,
                 device=self.settings.whisper_device,
                 compute_type=self.settings.whisper_compute_type,
             )
@@ -182,6 +185,7 @@ class MainWindow(QMainWindow):
                 whisper_compute_type=self.settings.whisper_compute_type,
                 keep_wav=self.settings.keep_wav,
                 bilibili_cookies_browser=self.settings.bilibili_cookies_browser,
+                bilibili_cookies_file=self.settings.bilibili_cookies_file,
                 window_width=self.width(),
                 window_height=self.height(),
             )
@@ -212,10 +216,36 @@ class MainWindow(QMainWindow):
             whisper_compute_type=self.settings.whisper_compute_type,
             keep_wav=self.settings.keep_wav,
             bilibili_cookies_browser=self.settings.bilibili_cookies_browser,
+            bilibili_cookies_file=self.settings.bilibili_cookies_file,
             window_width=self.width(),
             window_height=self.height(),
         )
         save_settings(self.settings)
+
+    def choose_cookies_file(self) -> None:
+        path, _ = QFileDialog.getOpenFileName(
+            self,
+            "选择 B 站 cookies.txt",
+            self.settings.bilibili_cookies_file,
+            "Cookies files (*.txt);;All files (*.*)",
+        )
+        if not path:
+            return
+        self.settings = AppSettings(
+            output_dir=self.output_dir_edit.text(),
+            ffmpeg_path=self.settings.ffmpeg_path,
+            transcription_backend=self.settings.transcription_backend,
+            whisper_model=self.settings.whisper_model,
+            whisper_device=self.settings.whisper_device,
+            whisper_compute_type=self.settings.whisper_compute_type,
+            keep_wav=self.settings.keep_wav,
+            bilibili_cookies_browser=self.settings.bilibili_cookies_browser,
+            bilibili_cookies_file=path,
+            window_width=self.width(),
+            window_height=self.height(),
+        )
+        save_settings(self.settings)
+        self.retry_failed_job()
 
     def cancel_current_job(self) -> None:
         if self._worker is not None:
@@ -245,6 +275,8 @@ class MainWindow(QMainWindow):
             return
         if action == "choose_ffmpeg":
             self.choose_ffmpeg_path()
+        if action == "choose_cookies_file":
+            self.choose_cookies_file()
 
     def retry_failed_job(self) -> None:
         if self._last_failed_job_id is None:
@@ -269,6 +301,7 @@ class MainWindow(QMainWindow):
             whisper_compute_type=self.settings.whisper_compute_type,
             keep_wav=self.settings.keep_wav,
             bilibili_cookies_browser=self.settings.bilibili_cookies_browser,
+            bilibili_cookies_file=self.settings.bilibili_cookies_file,
             window_width=self.width(),
             window_height=self.height(),
         )
@@ -277,9 +310,14 @@ class MainWindow(QMainWindow):
 
     def _with_runtime_settings(self, request: JobRequest, ffmpeg: str) -> JobRequest:
         cookies_from_browser = request.cookies_from_browser
+        cookies_file = request.cookies_file
         if request.platform == "bilibili":
-            browser = self.bilibili_input.cookies_browser()
-            cookies_from_browser = (browser, None, None, None) if browser else None
+            if self.settings.bilibili_cookies_file:
+                cookies_file = Path(self.settings.bilibili_cookies_file).expanduser().resolve()
+                cookies_from_browser = None
+            else:
+                browser = self.bilibili_input.cookies_browser()
+                cookies_from_browser = (browser, None, None, None) if browser else None
         return JobRequest(
             url=request.url,
             platform=request.platform,
@@ -290,6 +328,7 @@ class MainWindow(QMainWindow):
             ffmpeg=ffmpeg,
             keep_wav=self.settings.keep_wav,
             cookies_from_browser=cookies_from_browser,
+            cookies_file=cookies_file,
             device=self.settings.whisper_device,
             compute_type=self.settings.whisper_compute_type,
         )

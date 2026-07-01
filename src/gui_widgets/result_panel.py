@@ -51,17 +51,20 @@ class ResultPanel(QWidget):
         self.copy_button.clicked.connect(self.copy_current_text)
         self.failure_action_label = QLabel("")
         self.close_browser_retry_button = QPushButton("关闭浏览器后重试")
+        self.choose_cookies_file_button = QPushButton("选择 cookies.txt")
         self.retry_chrome_button = QPushButton("使用 Chrome Cookies 重试")
         self.retry_edge_button = QPushButton("使用 Edge Cookies 重试")
         self.choose_ffmpeg_button = QPushButton("选择 ffmpeg.exe")
         for button in (
             self.close_browser_retry_button,
+            self.choose_cookies_file_button,
             self.retry_chrome_button,
             self.retry_edge_button,
             self.choose_ffmpeg_button,
         ):
             button.setEnabled(False)
         self.close_browser_retry_button.clicked.connect(lambda: self.failure_action_requested.emit("close_browser_retry"))
+        self.choose_cookies_file_button.clicked.connect(lambda: self.failure_action_requested.emit("choose_cookies_file"))
         self.retry_chrome_button.clicked.connect(lambda: self.failure_action_requested.emit("chrome"))
         self.retry_edge_button.clicked.connect(lambda: self.failure_action_requested.emit("edge"))
         self.choose_ffmpeg_button.clicked.connect(lambda: self.failure_action_requested.emit("choose_ffmpeg"))
@@ -69,6 +72,7 @@ class ResultPanel(QWidget):
         failure_layout = QHBoxLayout()
         failure_layout.addWidget(self.failure_action_label, 1)
         failure_layout.addWidget(self.close_browser_retry_button)
+        failure_layout.addWidget(self.choose_cookies_file_button)
         failure_layout.addWidget(self.retry_chrome_button)
         failure_layout.addWidget(self.retry_edge_button)
         failure_layout.addWidget(self.choose_ffmpeg_button)
@@ -100,6 +104,7 @@ class ResultPanel(QWidget):
             "browser_cookies_locked",
         }
         self.close_browser_retry_button.setEnabled(kind == "browser_cookies_locked")
+        self.choose_cookies_file_button.setEnabled(kind == "browser_cookies_failed")
         self.retry_chrome_button.setEnabled(can_retry_with_cookies)
         self.retry_edge_button.setEnabled(can_retry_with_cookies)
         self.choose_ffmpeg_button.setEnabled(kind == "ffmpeg_missing")

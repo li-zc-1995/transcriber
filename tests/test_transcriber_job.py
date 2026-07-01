@@ -25,6 +25,7 @@ def make_request(tmp_path: Path, keep_wav: bool = False) -> JobRequest:
         ffmpeg="ffmpeg",
         keep_wav=keep_wav,
         cookies_from_browser=("chrome", None, None, None),
+        cookies_file=None,
     )
 
 
@@ -32,9 +33,18 @@ def test_transcriber_job_emits_events_and_writes_outputs(monkeypatch, tmp_path: 
     source_video = tmp_path / "01_BV.mp4"
     source_video.write_text("video", encoding="utf-8")
 
-    def fake_download_video(url, output_dir, index, cookies_from_browser=None, progress_hook=None, ffmpeg=None):
+    def fake_download_video(
+        url,
+        output_dir,
+        index,
+        cookies_from_browser=None,
+        cookies_file=None,
+        progress_hook=None,
+        ffmpeg=None,
+    ):
         assert url == "https://b23.tv/MJoM0cX"
         assert cookies_from_browser == ("chrome", None, None, None)
+        assert cookies_file is None
         assert ffmpeg == "ffmpeg"
         if progress_hook:
             progress_hook({"status": "downloading", "downloaded_bytes": 50, "total_bytes": 100})
@@ -94,11 +104,41 @@ def test_download_video_passes_ffmpeg_location_to_yt_dlp(monkeypatch, tmp_path: 
     assert captured_options["ffmpeg_location"] == "C:/tools/ffmpeg.exe"
 
 
+def test_download_video_passes_cookie_file_to_yt_dlp(monkeypatch, tmp_path: Path) -> None:
+    captured_options = {}
+    cookies_file = tmp_path / "bilibili-cookies.txt"
+    cookies_file.write_text("# Netscape HTTP Cookie File", encoding="utf-8")
+
+    class FakeYoutubeDL:
+        def __init__(self, options):
+            captured_options.update(options)
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, exc_type, exc, traceback):
+            return False
+
+        def extract_info(self, url, download):
+            return {"id": "BV", "ext": "mp4"}
+
+        def prepare_filename(self, info):
+            return str(tmp_path / "01_BV.mp4")
+
+    monkeypatch.setattr("src.transcriber_job.YoutubeDL", FakeYoutubeDL)
+
+    download_video("https://b23.tv/MJoM0cX", tmp_path, 1, cookies_file=cookies_file)
+
+    assert captured_options["cookiefile"] == str(cookies_file)
+    assert "cookiesfrombrowser" not in captured_options
+
+
 def test_transcriber_job_uses_faster_whisper_backend(monkeypatch, tmp_path: Path) -> None:
     source_video = tmp_path / "01_BV.mp4"
     source_video.write_text("video", encoding="utf-8")
 
-    def fake_download_video(url, output_dir, index, cookies_from_browser=None, progress_hook=None, ffmpeg=None):
+    def fake_download_video(url, output_dir, index, cookies_from_browser=None, cookies_file=None, progress_hook=None, ffmpeg=None):
+        assert cookies_file is None
         return source_video, {"title": "标题", "duration": 65, "id": "BV"}
 
     def fake_extract_audio(ffmpeg, video_path, wav_path):
@@ -121,6 +161,7 @@ def test_transcriber_job_uses_faster_whisper_backend(monkeypatch, tmp_path: Path
         ffmpeg="ffmpeg",
         keep_wav=False,
         cookies_from_browser=None,
+        cookies_file=None,
         device="auto",
         compute_type="int8",
     )
@@ -225,7 +266,7 @@ def test_classify_error_maps_browser_cookie_decryption_failure_to_cookie_issue()
     error = classify_error(Exception("ERROR: Failed to decrypt with DPAPI. See https://github.com/yt-dlp/yt-dlp/issues/10927"))
 
     assert error.kind == "browser_cookies_failed"
-    assert "Cookies" in error.message
+    assert "cookies.txt" in error.message
 
 
 def test_classify_error_maps_browser_cookie_database_copy_failure_to_cookie_issue() -> None:

@@ -14,6 +14,7 @@ def test_settings_round_trip_json(tmp_path: Path) -> None:
         whisper_compute_type="int8",
         keep_wav=True,
         bilibili_cookies_browser="chrome",
+        bilibili_cookies_file=str(tmp_path / "bilibili-cookies.txt"),
         window_width=1440,
         window_height=900,
     )

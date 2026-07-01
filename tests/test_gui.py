@@ -37,12 +37,14 @@ def test_main_window_exposes_platform_tabs_and_output_controls(tmp_path: Path) -
 
 def test_settings_dialog_preserves_transcription_runtime_options(tmp_path: Path) -> None:
     app()
+    cookies_file = tmp_path / "bilibili-cookies.txt"
     settings = AppSettings(
         output_dir=str(tmp_path),
         transcription_backend="openai-whisper",
         whisper_model="medium",
         whisper_device="cpu",
         whisper_compute_type="float32",
+        bilibili_cookies_file=str(cookies_file),
     )
     dialog = SettingsDialog(settings)
 
@@ -52,6 +54,7 @@ def test_settings_dialog_preserves_transcription_runtime_options(tmp_path: Path)
     assert saved.whisper_model == "medium"
     assert saved.whisper_device == "cpu"
     assert saved.whisper_compute_type == "float32"
+    assert saved.bilibili_cookies_file == str(cookies_file)
 
 
 def test_main_window_creates_requests_with_transcription_settings(tmp_path: Path) -> None:
@@ -96,6 +99,20 @@ def test_runtime_bilibili_request_uses_current_cookie_selection(tmp_path: Path) 
     runtime_request = window._with_runtime_settings(request, "ffmpeg")
 
     assert runtime_request.cookies_from_browser == ("chrome", None, None, None)
+
+
+def test_runtime_bilibili_request_prefers_configured_cookie_file(tmp_path: Path) -> None:
+    app()
+    cookies_file = tmp_path / "bilibili-cookies.txt"
+    cookies_file.write_text("# Netscape HTTP Cookie File", encoding="utf-8")
+    window = MainWindow(settings=AppSettings(output_dir=str(tmp_path), bilibili_cookies_file=str(cookies_file)))
+    window.add_tasks("bilibili", ["https://b23.tv/MJoM0cX"], "Edge")
+    request = next(iter(window._requests_by_job_id.values()))
+
+    runtime_request = window._with_runtime_settings(request, "ffmpeg")
+
+    assert runtime_request.cookies_file == cookies_file
+    assert runtime_request.cookies_from_browser is None
 
 
 def test_main_window_exposes_cancel_button(tmp_path: Path) -> None:
@@ -145,6 +162,19 @@ def test_main_window_maps_cookie_read_failure_to_cookie_retry(tmp_path: Path) ->
     assert window.result_panel.retry_edge_button.isEnabled()
     assert window.bilibili_input.cookies_combo.currentData() == "edge"
     assert calls == ["retry"]
+
+
+def test_main_window_maps_cookie_decryption_failure_to_cookie_file_picker(monkeypatch, tmp_path: Path) -> None:
+    app()
+    window = MainWindow(settings=AppSettings(output_dir=str(tmp_path)))
+    calls = []
+    window.choose_cookies_file = lambda: calls.append("choose")  # type: ignore[method-assign]
+
+    window.handle_job_failed("bilibili-001", "ERROR: Failed to decrypt with DPAPI")
+    window.result_panel.choose_cookies_file_button.click()
+
+    assert window.result_panel.choose_cookies_file_button.isEnabled()
+    assert calls == ["choose"]
 
 
 def test_main_window_closes_cookie_browser_before_retrying_locked_cookie_database(monkeypatch, tmp_path: Path) -> None:

@@ -19,6 +19,7 @@ class AppSettings:
     whisper_compute_type: str = "int8"
     keep_wav: bool = False
     bilibili_cookies_browser: str = ""
+    bilibili_cookies_file: str = ""
     window_width: int = 1200
     window_height: int = 760
 
