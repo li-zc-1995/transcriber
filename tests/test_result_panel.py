@@ -79,6 +79,7 @@ def test_result_panel_network_failure_does_not_enable_wrong_actions() -> None:
     assert not panel.retry_chrome_button.isEnabled()
     assert not panel.retry_edge_button.isEnabled()
     assert not panel.choose_ffmpeg_button.isEnabled()
+    assert not panel.close_browser_retry_button.isEnabled()
 
 
 def test_result_panel_exposes_cookie_retry_actions_for_browser_cookie_failure() -> None:
@@ -95,4 +96,22 @@ def test_result_panel_exposes_cookie_retry_actions_for_browser_cookie_failure() 
     assert panel.retry_chrome_button.isEnabled()
     assert panel.retry_edge_button.isEnabled()
     assert not panel.choose_ffmpeg_button.isEnabled()
+    assert not panel.close_browser_retry_button.isEnabled()
     assert actions == ["chrome", "edge"]
+
+
+def test_result_panel_exposes_close_browser_retry_for_cookie_database_lock() -> None:
+    app()
+    panel = ResultPanel()
+    actions = []
+    panel.failure_action_requested.connect(actions.append)
+
+    panel.show_failure_actions("browser_cookies_locked", "浏览器 Cookies 数据库被占用", browser="edge")
+    panel.close_browser_retry_button.click()
+
+    assert panel.failure_action_label.text() == "浏览器 Cookies 数据库被占用"
+    assert panel.retry_chrome_button.isEnabled()
+    assert panel.retry_edge_button.isEnabled()
+    assert panel.close_browser_retry_button.isEnabled()
+    assert panel.close_browser_retry_button.text() == "关闭 Edge 后重试"
+    assert actions == ["close_browser_retry"]

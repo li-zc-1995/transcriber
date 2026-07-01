@@ -50,17 +50,25 @@ class ResultPanel(QWidget):
         self.copy_button = QPushButton("复制当前文案")
         self.copy_button.clicked.connect(self.copy_current_text)
         self.failure_action_label = QLabel("")
+        self.close_browser_retry_button = QPushButton("关闭浏览器后重试")
         self.retry_chrome_button = QPushButton("使用 Chrome Cookies 重试")
         self.retry_edge_button = QPushButton("使用 Edge Cookies 重试")
         self.choose_ffmpeg_button = QPushButton("选择 ffmpeg.exe")
-        for button in (self.retry_chrome_button, self.retry_edge_button, self.choose_ffmpeg_button):
+        for button in (
+            self.close_browser_retry_button,
+            self.retry_chrome_button,
+            self.retry_edge_button,
+            self.choose_ffmpeg_button,
+        ):
             button.setEnabled(False)
+        self.close_browser_retry_button.clicked.connect(lambda: self.failure_action_requested.emit("close_browser_retry"))
         self.retry_chrome_button.clicked.connect(lambda: self.failure_action_requested.emit("chrome"))
         self.retry_edge_button.clicked.connect(lambda: self.failure_action_requested.emit("edge"))
         self.choose_ffmpeg_button.clicked.connect(lambda: self.failure_action_requested.emit("choose_ffmpeg"))
 
         failure_layout = QHBoxLayout()
         failure_layout.addWidget(self.failure_action_label, 1)
+        failure_layout.addWidget(self.close_browser_retry_button)
         failure_layout.addWidget(self.retry_chrome_button)
         failure_layout.addWidget(self.retry_edge_button)
         failure_layout.addWidget(self.choose_ffmpeg_button)
@@ -81,9 +89,17 @@ class ResultPanel(QWidget):
             line = f"{line}\n{event.detail}"
         self.log_text.append(line)
 
-    def show_failure_actions(self, kind: str, message: str) -> None:
+    def show_failure_actions(self, kind: str, message: str, browser: str | None = None) -> None:
         self.failure_action_label.setText(message)
-        can_retry_with_cookies = kind in {"bilibili_requires_cookies", "browser_cookies_failed"}
+        browser_label = {"chrome": "Chrome", "edge": "Edge"}.get(browser or "", "浏览器")
+        close_label = f"关闭 {browser_label} 后重试" if browser != "" and browser in {"chrome", "edge"} else "关闭浏览器后重试"
+        self.close_browser_retry_button.setText(close_label)
+        can_retry_with_cookies = kind in {
+            "bilibili_requires_cookies",
+            "browser_cookies_failed",
+            "browser_cookies_locked",
+        }
+        self.close_browser_retry_button.setEnabled(kind == "browser_cookies_locked")
         self.retry_chrome_button.setEnabled(can_retry_with_cookies)
         self.retry_edge_button.setEnabled(can_retry_with_cookies)
         self.choose_ffmpeg_button.setEnabled(kind == "ffmpeg_missing")

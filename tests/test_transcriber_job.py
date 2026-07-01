@@ -231,6 +231,6 @@ def test_classify_error_maps_browser_cookie_decryption_failure_to_cookie_issue()
 def test_classify_error_maps_browser_cookie_database_copy_failure_to_cookie_issue() -> None:
     error = classify_error(Exception("ERROR: Could not copy Chrome cookie database. See https://github.com/yt-dlp/yt-dlp/issues/7271"))
 
-    assert error.kind == "browser_cookies_failed"
+    assert error.kind == "browser_cookies_locked"
     assert "Cookies" in error.message
     assert "完全退出" in error.message

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+import subprocess
 from pathlib import Path
 
 from PySide6.QtCore import QThread
@@ -27,6 +28,19 @@ from src.gui_widgets.task_list import TaskListWidget
 from src.job_events import JobRequest
 from src.transcriber_job import classify_error
 from src.worker import JobWorker
+
+
+BROWSER_PROCESS_NAMES = {
+    "chrome": "chrome.exe",
+    "edge": "msedge.exe",
+}
+
+
+def close_browser_processes(browser: str) -> None:
+    process_name = BROWSER_PROCESS_NAMES.get(browser)
+    if process_name is None:
+        return
+    subprocess.run(["taskkill", "/IM", process_name, "/T", "/F"], check=False, capture_output=True, text=True)
 
 
 class MainWindow(QMainWindow):
@@ -211,13 +225,22 @@ class MainWindow(QMainWindow):
     def handle_job_failed(self, job_id: str, error_text: str) -> None:
         self._last_failed_job_id = job_id
         error = classify_error(Exception(error_text))
-        self.result_panel.show_failure_actions(error.kind, error.message)
+        self.result_panel.show_failure_actions(error.kind, error.message, browser=self._failed_cookie_browser(job_id))
 
     def handle_failure_action(self, action: str) -> None:
         if action in {"chrome", "edge"}:
             index = self.bilibili_input.cookies_combo.findData(action)
             if index >= 0:
                 self.bilibili_input.cookies_combo.setCurrentIndex(index)
+            self.retry_failed_job()
+            return
+        if action == "close_browser_retry":
+            browser = self._failed_cookie_browser(self._last_failed_job_id)
+            if browser:
+                index = self.bilibili_input.cookies_combo.findData(browser)
+                if index >= 0:
+                    self.bilibili_input.cookies_combo.setCurrentIndex(index)
+                close_browser_processes(browser)
             self.retry_failed_job()
             return
         if action == "choose_ffmpeg":
@@ -270,6 +293,16 @@ class MainWindow(QMainWindow):
             device=self.settings.whisper_device,
             compute_type=self.settings.whisper_compute_type,
         )
+
+    def _failed_cookie_browser(self, job_id: str | None) -> str | None:
+        if job_id is None:
+            return None
+        request = self._requests_by_job_id.get(job_id)
+        if request is None or request.platform != "bilibili":
+            return None
+        if request.cookies_from_browser:
+            return request.cookies_from_browser[0]
+        return self.bilibili_input.cookies_browser()
 
     def _clear_worker(self) -> None:
         self._thread = None

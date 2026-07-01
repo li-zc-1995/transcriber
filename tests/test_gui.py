@@ -147,6 +147,24 @@ def test_main_window_maps_cookie_read_failure_to_cookie_retry(tmp_path: Path) ->
     assert calls == ["retry"]
 
 
+def test_main_window_closes_cookie_browser_before_retrying_locked_cookie_database(monkeypatch, tmp_path: Path) -> None:
+    app()
+    window = MainWindow(settings=AppSettings(output_dir=str(tmp_path)))
+    window.add_tasks("bilibili", ["https://b23.tv/MJoM0cX"], "edge")
+    closed = []
+    retried = []
+    monkeypatch.setattr("src.gui_widgets.main_window.close_browser_processes", closed.append)
+    window.retry_failed_job = lambda: retried.append("retry")  # type: ignore[method-assign]
+
+    window.handle_job_failed("bilibili-001", "ERROR: Could not copy Chrome cookie database")
+    window.result_panel.close_browser_retry_button.click()
+
+    assert window.result_panel.close_browser_retry_button.isEnabled()
+    assert window.bilibili_input.cookies_combo.currentData() == "edge"
+    assert closed == ["edge"]
+    assert retried == ["retry"]
+
+
 def test_retry_failed_job_only_runs_failed_request(monkeypatch, tmp_path: Path) -> None:
     app()
     window = MainWindow(settings=AppSettings(output_dir=str(tmp_path)))

@@ -182,7 +182,7 @@ def classify_error(exc: Exception) -> UserFacingError:
         )
     if "could not copy chrome cookie database" in lowered:
         return UserFacingError(
-            kind="browser_cookies_failed",
+            kind="browser_cookies_locked",
             message="浏览器 Cookies 数据库被占用，请完全退出 Chrome/Edge（包括后台进程）后重试，或切换浏览器 Cookies。",
             detail=detail,
         )
